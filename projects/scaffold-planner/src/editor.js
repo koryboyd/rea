@@ -9,10 +9,17 @@ const ICON_SIDES = {
   U: ["M6 24V6", "M6 6H34", "M34 6V24"],
   rect: ["M6 6H34V24H6Z"],
   custom: ["M6 6H22", "M22 6V14H34", "M34 14V24"],
+  plan: ["M12 4H28V26H12Z", "M15 10H25V20H15Z"],
 };
 
 const shapeIcon = (type) =>
   `<svg viewBox="0 0 40 30" aria-hidden="true"><rect x="9" y="9" width="22" height="12" class="ico-bldg"/>${ICON_SIDES[type].map((d) => `<path d="${d}" class="ico-scaf"/>`).join("")}</svg>`;
+
+const HOPS = [
+  { value: 0, label: "None" },
+  { value: 1, label: "1 deck" },
+  { value: 2, label: "2 decks" },
+];
 
 const DIRS = [
   { value: "N", label: "↑" },
@@ -33,11 +40,16 @@ function jobPanel(job) {
 }
 
 function shapePicker(state) {
-  const current = state.job.shape?.type ?? "custom";
-  const buttons = [...Object.entries(SHAPES), ["custom", { label: "Custom" }]]
+  const current =
+    state.job.shape?.type ?? (state.job.fromPlan ? "plan" : "custom");
+  const buttons = [
+    ...Object.entries(SHAPES),
+    ["plan", { label: "From plan" }],
+    ["custom", { label: "Custom" }],
+  ]
     .map(
       ([type, def]) =>
-        `<button type="button" class="shape-btn" data-act="shape" data-id="${type}" aria-pressed="${type === current}">${shapeIcon(type)}<span>${def.label}</span></button>`,
+        `<button type="button" class="shape-btn" data-act="${type === "plan" ? "import-plan" : "shape"}" data-id="${type}" aria-pressed="${type === current || (type === "plan" && !state.job.shape && Boolean(state.job.fromPlan))}">${shapeIcon(type)}<span>${def.label}</span></button>`,
     )
     .join("");
   const confirm = state.confirmShape
@@ -64,7 +76,9 @@ function shapeInputs(shape) {
     ${usesDepth(shape.type) ? s("depth", "Depth (m)", 0.5, 0.5) : ""}
     ${s("height", "Work height (m)", 0.5, 0.5)}
     ${s("ladders", "Ladder access bays", 1, 0)}
+    ${s("stairs", "Stair towers", 1, 0)}
   </div>
+  ${field("Hop-ups (inside, every working deck)", seg({ scope: "shape", key: "hopUps", current: Number(shape.hopUps) || 0, label: "Hop-ups", options: HOPS }))}
   ${field(
     "Boarded decks",
     seg({
@@ -139,11 +153,12 @@ function runCard(run, i, built) {
       <button class="btn small" data-act="up" data-id="${id}" aria-label="Move up"${i === 0 ? " disabled" : ""}>↑</button>
       <button class="btn small danger" data-act="remove" data-id="${id}" aria-label="Remove side">✕</button>
     </div>
-    ${field("Direction from the last side", seg({ scope: "run", key: "direction", id, current: run.direction, label: "Direction", options: DIRS }))}
+    ${run.angle === undefined ? field("Direction from the last side", seg({ scope: "run", key: "direction", id, current: run.direction, label: "Direction", options: DIRS })) : `<p class="note mono">From plan · ${Math.round(((run.angle % 360) + 360) % 360)}°</p>`}
     <div class="grid2">
       ${rstep("length", "Wall length (m)", 0.5, 0.5)}
       ${rstep("height", "Work height (m)", 0.5, 0.5)}
       ${rstep("ladderBays", "Ladder bays", 1, 0)}
+      ${rstep("stairBays", "Stair towers", 1, 0)}
       ${field(
         "Decks",
         seg({
@@ -159,6 +174,7 @@ function runCard(run, i, built) {
         }),
       )}
     </div>
+    ${field("Hop-ups", seg({ scope: "run", key: "hopUps", id, current: Number(run.hopUps) || 0, label: "Hop-ups", options: HOPS }))}
     <label class="check"><input type="checkbox" id="${id}-flip" data-run="${id}" data-rk="flip"${run.flip ? " checked" : ""}/> Scaffold on the other side of this wall</label>
     <div class="run-meta">${built?.runs[i] ? esc(runMeta(built.runs[i])) : ""}</div>
   </div>`;

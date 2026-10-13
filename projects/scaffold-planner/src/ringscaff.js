@@ -91,6 +91,27 @@ const toeboards = [
   [3.07, 10.3, "E04RS0101", 18.6],
 ].map(row("toeboard", (l) => `Wooden toe board ${m(l)}`));
 
+const brackets = [
+  [0.39, 3.8, "E04RS0449", 29.6],
+  [0.73, 6.8, "E04RS0417", 34.8],
+].map(
+  row(
+    "bracket",
+    (l) => `Steel bracket U-hook ${m(l)} (${l < 0.5 ? 1 : 2} deck)`,
+  ),
+);
+
+const access = [
+  row(
+    "stair",
+    () => "Aluminium platform stairway 0.64 m U-hook, 2.57 m bay",
+  )([2.57, 23.0, "E04RS0589", 365.0]),
+  row(
+    "accessladder",
+    () => "Access ladder for 1 level 2.16 m",
+  )([2.16, 9.4, "07100", 45.9]),
+];
+
 const base = [
   row("basejack", () => "Base jack 0.60 m")([0.6, 3.9, "08358", 14.3]),
   row(
@@ -131,6 +152,13 @@ export const RINGSCAFF = {
   name: "Scafom Ringscaff",
   nodePitch: 0.5,
   liftHeights: [2.0],
+  deckWidth: 0.32,
+  defaultBraceEvery: 5,
+  hopUps: [
+    { decks: 1, bracket: 0.39 },
+    { decks: 2, bracket: 0.73 },
+  ],
+  stair: { bayLength: 2.57, rise: 2.0, width: 0.64 },
   bayLengths: [0.73, 1.09, 1.57, 2.07, 2.57, 3.07],
   defaultMaxBay: 2.57,
   widths: [
@@ -150,6 +178,8 @@ export const RINGSCAFF = {
     ...toeboards,
     ...base,
     ...hatches,
+    ...brackets,
+    ...access,
     ...site,
   ],
 };

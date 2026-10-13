@@ -135,7 +135,7 @@ export async function planPdf(job, built, quote, loads) {
   let page = 1;
   header(pdf, job, `Scaffold plan: ${built.system.name}`, page);
   await addDrawing(pdf, planSvg(built, PRINT_INK), 28, 170);
-  for (const r of built.runs) {
+  for (const [index, r] of built.runs.entries()) {
     pdf.addPage();
     header(
       pdf,
@@ -143,7 +143,7 @@ export async function planPdf(job, built, quote, loads) {
       `Elevation: ${r.run.label} (${r.bays.length} bays, top deck +${r.levels.topDeck} m)`,
       ++page,
     );
-    await addDrawing(pdf, elevationSvg(r, PRINT_INK), 28, 170);
+    await addDrawing(pdf, elevationSvg(built, index, PRINT_INK), 28, 170);
   }
   pdf.addPage();
   header(pdf, job, "Parts list", ++page);

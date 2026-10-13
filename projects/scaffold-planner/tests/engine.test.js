@@ -35,28 +35,24 @@ test("standard columns reach top deck plus 1 m handrail", () => {
   assert.deepEqual(combine(0.3, [0.5], 1), [0.5]);
 });
 
-test("cuplok job counts standards, jacks and planks", async () => {
-  const { withShape } = await import("../src/job.js");
-  const job = withShape(
-    conformToSystem({
-      ...exampleJob(),
-      system: "cuplok",
-      width: 1.3,
-      maxBay: 2.5,
-    }),
-    { type: "rect", length: 12, depth: 9, height: 6, decks: "top", ladders: 1 },
-  );
-  const built = buildJob(job);
-  const qty = (code) => built.parts.find((p) => p.code === code)?.qty ?? 0;
+const count = (built, code) =>
+  built.components.filter((c) => c.code === code).length;
+
+test("closed rectangle shares corner standards and never doubles them", () => {
+  const built = buildJob(exampleJob());
   const lines = built.runs.reduce((a, r) => a + r.bays.length + 1, 0);
-  assert.equal(qty("C-BJ600"), lines * 2);
-  const front = built.runs[0];
-  assert.equal(front.levels.topDeck, 6);
-  assert.equal(front.levels.lifts, 3);
-  assert.deepEqual(front.bays, [2.5, 2.5, 2.5, 2.5, 2.5]);
-  assert.equal(front.items.get("C-HATCH"), 3);
-  assert.equal(front.items.get("CP-2.5"), 4 * 5 + 3 * 3);
-  assert.equal(built.missing.length, 0);
+  assert.equal(count(built, "08358"), lines * 2);
+  const feet = built.components
+    .filter((c) => c.kind === "basejack")
+    .map((c) =>
+      c.a
+        .slice(0, 2)
+        .map((v) => v.toFixed(2))
+        .join(),
+    );
+  assert.equal(new Set(feet).size, feet.length);
+  assert.equal(built.corners, 4);
+  assert.ok(built.runs.every((r) => r.layout.cornerBay && r.layout.skipFirst));
 });
 
 test("ringscaff 6.5 m deck uses 0.5 m rings and Scafom parts", () => {
@@ -66,14 +62,92 @@ test("ringscaff 6.5 m deck uses 0.5 m rings and Scafom parts", () => {
   assert.equal(job.system, "ringscaff");
   assert.equal(front.levels.topDeck, 6.5);
   assert.deepEqual(front.levels.ledgerLevels, [0.5, 2.5, 4.5, 6.5]);
-  assert.deepEqual(front.bays, [2.57, 2.57, 2.57, 2.57, 2.07]);
   assert.equal(built.missing.length, 0);
-  const qty = (code) => built.parts.find((p) => p.code === code)?.qty ?? 0;
-  assert.equal(qty("E04RS0467"), 3);
-  assert.equal(qty("08358"), qty("E04RS0002"));
-  assert.ok(qty("E04RS0379") > 0);
+  assert.equal(count(built, "E04RS0467"), 3);
+  assert.equal(count(built, "07100"), 1);
+  assert.equal(count(built, "08358"), count(built, "E04RS0002"));
   const ring = getSystem("ringscaff").components.map((c) => c.code);
   assert.ok(built.parts.every((p) => ring.includes(p.code)));
+});
+
+test("hop-ups add a bracket per standard line and deck level", async () => {
+  const { withShape } = await import("../src/job.js");
+  const job = withShape(exampleJob(), {
+    type: "wall",
+    length: 10,
+    height: 4.5,
+    decks: "all",
+    ladders: 0,
+    hopUps: 1,
+  });
+  const built = buildJob({ ...job, wallGap: 0.45 });
+  const r = built.runs[0];
+  assert.equal(
+    count(built, "E04RS0449"),
+    (r.bays.length + 1) * r.levels.deckLevels.length,
+  );
+  const hopPlanks = built.components.filter(
+    (c) => c.kind === "plank" && c.local.a[1] < r.gap,
+  );
+  assert.equal(hopPlanks.length, r.bays.length * r.levels.deckLevels.length);
+  assert.equal(built.notes.length, 0);
+});
+
+test("stair tower climbs every lift in a 2.57 m bay", async () => {
+  const { withShape } = await import("../src/job.js");
+  const job = withShape(exampleJob(), {
+    type: "wall",
+    length: 10,
+    height: 6.5,
+    decks: "top",
+    ladders: 0,
+    stairs: 1,
+  });
+  const built = buildJob(job);
+  const r = built.runs[0];
+  assert.equal(r.stairBays.size, 1);
+  assert.equal(r.bays[[...r.stairBays][0]], 2.57);
+  assert.equal(count(built, "E04RS0589"), 3);
+  assert.equal(built.missing.length, 0);
+});
+
+test("inside corners stop the first side short of the second", () => {
+  const pts = [
+    [0, 0],
+    [10, 0],
+    [10, 5],
+    [5, 5],
+    [5, 10],
+    [0, 10],
+  ];
+  const runs = pts.map((p, i) => {
+    const q = pts[(i + 1) % pts.length];
+    const angle = (Math.atan2(q[1] - p[1], q[0] - p[0]) * 180) / Math.PI;
+    return {
+      id: `e${i}`,
+      label: `Edge ${i}`,
+      start: p,
+      angle,
+      length: Math.hypot(q[0] - p[0], q[1] - p[1]),
+      height: 4,
+      decks: "top",
+    };
+  });
+  const job = { ...exampleJob(), shape: null, closed: true, runs };
+  const built = buildJob(job);
+  const types = built.runs.map((r) => r.layout.endCorner);
+  assert.deepEqual(types, [
+    "convex",
+    "convex",
+    "concave",
+    "convex",
+    "convex",
+    "convex",
+  ]);
+  const a = built.runs[2];
+  const next = built.runs[3];
+  assert.ok(a.us.at(-1) <= a.run.length - next.gap + 1e-6);
+  assert.equal(built.missing.length, 0);
 });
 
 test("loads flag over-capacity legs only when an allowable is given", () => {

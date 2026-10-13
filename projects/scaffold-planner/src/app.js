@@ -380,6 +380,25 @@ const ACTIONS = {
     state.confirmShape = null;
     renderEdit();
   },
+  "import-plan": async () => {
+    const { openPlanImport } = await import("./planimport.js");
+    const shape = state.job.shape ?? {};
+    openPlanImport({
+      defaults: {
+        height: shape.height ?? state.job.runs[0]?.height ?? 4,
+        decks: shape.decks ?? "top",
+        ladders: 1,
+        hopUps: shape.hopUps ?? 0,
+      },
+      onDone: (runs) => {
+        setJob(
+          { ...state.job, shape: null, closed: true, fromPlan: true, runs },
+          { structural: true },
+        );
+        toast(`Mapped ${runs.length} sides from the plan`);
+      },
+    });
+  },
   customise: () => {
     if (!state.job.shape) return;
     setJob({ ...state.job, shape: null }, { structural: true });

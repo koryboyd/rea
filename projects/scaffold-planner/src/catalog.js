@@ -3,7 +3,31 @@ import { RINGSCAFF } from "./ringscaff.js";
 // Nominal component data. Lengths, weights and rates are placeholders until
 // they are replaced with the Scafom / supplier catalogue figures.
 
-const generic = (prefix) => [
+const generic = (prefix, stairBay) => [
+  {
+    code: `${prefix}-HOP1`,
+    name: "Hop-up bracket 1 board",
+    kind: "bracket",
+    length: 0.3,
+    weight: 4.0,
+    hire: 0.3,
+  },
+  {
+    code: `${prefix}-HOP2`,
+    name: "Hop-up bracket 2 board",
+    kind: "bracket",
+    length: 0.5,
+    weight: 6.5,
+    hire: 0.4,
+  },
+  {
+    code: `${prefix}-STAIR`,
+    name: `Stair unit for ${stairBay} m bay`,
+    kind: "stair",
+    length: stairBay,
+    weight: 25.0,
+    hire: 3.0,
+  },
   {
     code: `${prefix}-BJ600`,
     name: "Adjustable base jack 600",
@@ -60,6 +84,13 @@ export const SYSTEMS = {
     id: "cuplok",
     name: "Scafom Cuplok",
     nodePitch: 0.5,
+    deckWidth: 0.225,
+    defaultBraceEvery: 3,
+    hopUps: [
+      { decks: 1, bracket: 0.3 },
+      { decks: 2, bracket: 0.5 },
+    ],
+    stair: { bayLength: 2.5, rise: 2.0, width: 0.65 },
     liftHeights: [1.5, 2.0],
     widths: [
       { width: 0.8, boards: 3 },
@@ -250,13 +281,20 @@ export const SYSTEMS = {
         weight: 5.5,
         hire: 0.35,
       },
-      ...generic("C"),
+      ...generic("C", 2.5),
     ],
   },
   kwikstage: {
     id: "kwikstage",
     name: "Kwikstage",
     nodePitch: 0.5,
+    deckWidth: 0.23,
+    defaultBraceEvery: 3,
+    hopUps: [
+      { decks: 1, bracket: 0.3 },
+      { decks: 2, bracket: 0.5 },
+    ],
+    stair: { bayLength: 2.4, rise: 2.0, width: 0.65 },
     liftHeights: [1.5, 2.0],
     widths: [
       { width: 0.7, boards: 3 },
@@ -455,7 +493,7 @@ export const SYSTEMS = {
         weight: 5.3,
         hire: 0.35,
       },
-      ...generic("K"),
+      ...generic("K", 2.4),
     ],
   },
 };

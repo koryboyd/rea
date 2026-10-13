@@ -6,7 +6,16 @@ function planView(state) {
   const { built } = state;
   const runIdx = Math.min(state.elevRun, built.runs.length - 1);
   const r = built.runs[runIdx];
-  return `<div class="panel">
+  const checks = [
+    ...built.notes,
+    ...built.missing.map((x) => `No catalogue part for ${x}.`),
+  ];
+  const checkPanel = checks.length
+    ? `<div class="panel checks"><h3>Check before you build</h3><ul>${checks.map((c) => `<li>${esc(c)}</li>`).join("")}</ul></div>`
+    : "";
+  return (
+    checkPanel +
+    `<div class="panel">
     <div class="panel-head"><h2>Plan</h2><button class="btn small primary" data-act="pdf">PDF</button></div>
     <div class="drawing">${planSvg(built)}</div>
     <p class="note">Each bay shows width × length and the working deck height. Colours match bay sizes. Tap a side to see its elevation.</p>
@@ -15,9 +24,10 @@ function planView(state) {
     <div class="panel-head"><h2>Elevation</h2>
       <select id="elev-run" data-elev aria-label="Side to show">${built.runs.map((x, i) => opt(i, x.run.label, runIdx)).join("")}</select>
     </div>
-    <div class="drawing elev">${elevationSvg(r)}</div>
+    <div class="drawing elev">${elevationSvg(built, runIdx)}</div>
     <p class="note">Outer face. T marks tie levels. Deck heights are from the base plate.</p>
-  </div>`;
+  </div>`
+  );
 }
 
 function partsView(state) {

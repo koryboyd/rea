@@ -12,6 +12,8 @@ export const newRun = (overrides = {}) => ({
   height: 4,
   decks: "top",
   ladderBays: 0,
+  stairBays: 0,
+  hopUps: 0,
   flip: false,
   ...overrides,
 });
@@ -61,12 +63,20 @@ export function shapeRuns(shape) {
     height: Number(shape.height),
     decks: shape.decks,
     ladderBays: i === front ? Number(shape.ladders) || 0 : 0,
+    stairBays: i === front ? Number(shape.stairs) || 0 : 0,
+    hopUps: Number(shape.hopUps) || 0,
     flip: false,
   }));
 }
 
 export function withShape(job, shape) {
-  return { ...job, shape, runs: shapeRuns(shape) };
+  return {
+    ...job,
+    shape,
+    fromPlan: false,
+    closed: shape.type === "rect",
+    runs: shapeRuns(shape),
+  };
 }
 
 export function blankJob(base) {
@@ -97,7 +107,7 @@ export function exampleJob() {
     width: 1.09,
     maxBay: 2.57,
     wallGap: 0.3,
-    braceEvery: 3,
+    braceEvery: 5,
     tieVertical: 4.0,
     tieEveryBays: 2,
     innerGuardrail: false,

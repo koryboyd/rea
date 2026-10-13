@@ -7,17 +7,42 @@ indicative leg-load check.
 ## Using it
 
 1. **Job**: name, client, site.
-2. **Scaffold**: tap the system, width and lift, then what you are
-   scaffolding (one wall, L shape, three sides or all round). Set length,
-   depth and work height with the − / + buttons. The sides, bays and a plan
-   preview update as you go.
-3. Odd walls or different heights: tap **Edit each side** to set every side
-   yourself.
-4. **Plan**, **3D**, **Parts**, **Quote** show the results. **PDF** at the top
-   exports the plan, elevations, parts list and quote in one file.
+2. **Scaffold**: tap the system, width and lift. Then either pick a shape (one
+   wall, L shape, three sides, all round) and set length, depth and height
+   with the − / + buttons, or tap **From plan** to map a house plan.
+3. **From plan**: choose the architect PDF (or a photo), pick the floor plan
+   page, then tap the outside corners of the house. Taps snap to the wall lines
+   in the PDF, the scale comes from the title block (or **Set scale** off a
+   known dimension), edge lengths show as you go, and steps under 0.5 m are
+   smoothed to the outer face. Each wall becomes a side you can edit.
+4. Per side: work height, boarded decks, ladder bays, stair towers and
+   hop-ups (1 or 2 decks).
+5. **Plan**, **3D**, **Parts**, **Quote**, **Loads** show the results. **PDF**
+   exports the plan, elevations, parts list and quote.
 
-Bracing, ties, duty class and bay size sit under **More settings** with
-defaults that suit most jobs.
+## How the scaffold is built
+
+Every component is placed in 3D, and the parts list counts those placements,
+so the 3D view and the parts list always match.
+
+- **Outside corners**: the side reaching the corner gets a square corner bay
+  (width × width) and the next side starts from it, sharing its standards.
+  The next side's gap to the wall takes up the overshoot of the bays.
+- **Inside corners**: the first side stops at the second side's inner line;
+  the second starts outside the first side's outer face.
+- **Angled corners**: both sides stop at the corner and the plan flags it.
+- **Hop-ups**: brackets on the inner standards at every working deck with 1 or
+  2 decks per bay. The wall gap widens to fit the bracket automatically.
+- **Ladder access**: hatch deck at every lift in the ladder bay (Ringscaff
+  hatch has an integrated ladder; the bottom lift uses an access ladder).
+- **Stair access**: a tower bay outside the scaffold (2.57 m bay on Ringscaff)
+  with a platform stair per 2.0 m lift, landing deck, guardrails and braces.
+  The main guardrail is left open at the stair.
+- **Bracing**: a diagonal in every lift of the first bay, every Nth bay and the
+  last bay (Ringscaff default 5, others 3), moved to the nearest bay that has a
+  matching diagonal size, alternating direction each lift.
+- **Checks**: gaps over 225 mm without hop-ups or inner guardrails, missing
+  catalogue sizes, and access bays that need a particular bay length.
 
 ## Systems
 
@@ -52,8 +77,8 @@ mixes Cuplok and Kwikstage components.
 | Quote             | Hire (qty × $/week × weeks) + erect and dismantle $/m² of face + cartage both ways + margin + GST                                                                                                    |
 | Loads             | Worst standard per run: self weight it carries + duty load (225 / 450 / 675 kg per bay) on the loaded decks. Compared against the manufacturer's allowable leg load and the ground bearing you enter |
 
-Not modelled yet: corner bays (each run is counted on its own), hop-ups, stair
-towers, sheeting, wind and tie forces.
+Not modelled yet: sheeting, loading bays, wind and tie forces, and the
+inside-corner deck link (the two sides meet at a guardrail).
 
 ## Before using it on a real job
 
@@ -78,18 +103,21 @@ the page's shared store, so everyone with edit access sees the same jobs.
 
 ## Layout
 
-| File             | Owns                                                                    |
-| ---------------- | ----------------------------------------------------------------------- |
-| `src/catalog.js` | Systems, widths, lift heights, component lengths, weights, rates        |
-| `src/engine.js`  | Bay solver, column builder, parts tally, member geometry, run placement |
-| `src/loads.js`   | Leg load, base pressure and freestanding checks                         |
-| `src/quote.js`   | Hire, labour, cartage, margin, GST                                      |
-| `src/drawing.js` | Plan and elevation SVG                                                  |
-| `src/view3d.js`  | 3D view (three.js)                                                      |
-| `src/export.js`  | PDF and CSV export                                                      |
-| `src/store.js`   | Saved jobs and rates                                                    |
-| `src/job.js`     | Job defaults and shape presets                                          |
-| `src/editor.js`  | Job and scaffold input screen                                           |
-| `src/views.js`   | Plan, parts, quote, loads, rates and saved-job screens                  |
-| `src/ui.js`      | Shared controls (buttons, steppers, formatting)                         |
-| `src/app.js`     | State, saving and input handling                                        |
+| File                | Owns                                                                    |
+| ------------------- | ----------------------------------------------------------------------- |
+| `src/catalog.js`    | Systems, widths, lift heights, component lengths, weights, rates        |
+| `src/engine.js`     | Bay solver, column builder, parts tally, member geometry, run placement |
+| `src/loads.js`      | Leg load, base pressure and freestanding checks                         |
+| `src/quote.js`      | Hire, labour, cartage, margin, GST                                      |
+| `src/drawing.js`    | Plan and elevation SVG                                                  |
+| `src/view3d.js`     | 3D view (three.js)                                                      |
+| `src/export.js`     | PDF and CSV export                                                      |
+| `src/store.js`      | Saved jobs and rates                                                    |
+| `src/job.js`        | Job defaults and shape presets                                          |
+| `src/outline.js`    | Plan outline maths, PDF path parsing, scale and sheet detection         |
+| `src/planimport.js` | PDF and photo import, page picker and corner tracing                    |
+| `src/ringscaff.js`  | Scafom Ringscaff catalogue                                              |
+| `src/editor.js`     | Job and scaffold input screen                                           |
+| `src/views.js`      | Plan, parts, quote, loads, rates and saved-job screens                  |
+| `src/ui.js`         | Shared controls (buttons, steppers, formatting)                         |
+| `src/app.js`        | State, saving and input handling                                        |
