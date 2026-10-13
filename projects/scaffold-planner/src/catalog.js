@@ -21,6 +21,22 @@ const generic = (prefix, stairBay) => [
     hire: 0.4,
   },
   {
+    code: `${prefix}-STAIR-RAIL-O`,
+    name: "Stair outer handrail",
+    kind: "stairrailouter",
+    length: 3.4,
+    weight: 15.0,
+    hire: 1.0,
+  },
+  {
+    code: `${prefix}-STAIR-RAIL-I`,
+    name: "Stair inner handrail",
+    kind: "stairrailinner",
+    length: 2.2,
+    weight: 12.0,
+    hire: 0.8,
+  },
+  {
     code: `${prefix}-STAIR`,
     name: `Stair unit for ${stairBay} m bay`,
     kind: "stair",

@@ -25,8 +25,8 @@ indicative leg-load check.
 Every component is placed in 3D, and the parts list counts those placements,
 so the 3D view and the parts list always match. The 3D view uses a CAD look
 modelled on iScaf: white ground, isometric (orthographic) camera, standards
-coloured by length, ledgers coloured by bay length (matching the plan), navy
-guardrails and transoms, maroon diagonals, grey steel decks, black hatch
+coloured by length, ledgers and transoms coloured by length with the same
+colours as the plan bays, navy guardrails, maroon diagonals, grey steel decks, black hatch
 decks, red base jacks, rosettes, wedge heads and spigots, and the house
 footprint on the ground. A key under the view lists the colours in use.
 
@@ -41,8 +41,12 @@ footprint on the ground. A key under the view lists the colours in use.
 - **Ladder access**: hatch deck at every lift in the ladder bay (Ringscaff
   hatch has an integrated ladder; the bottom lift uses an access ladder).
 - **Stair access**: a tower bay outside the scaffold (2.57 m bay on Ringscaff)
-  with a platform stair per 2.0 m lift, landing deck, guardrails and braces.
-  The main guardrail is left open at the stair.
+  with a platform stair per 2.0 m lift. The stair lane runs along the tower's
+  outer face with inner and outer stair handrails on every flight (Scafom
+  01040 / 01041); landing decks sit against the main scaffold. Every lift has
+  guardrails on the outer face and both ends, and on the main-scaffold side
+  wherever that bay has no working deck. At working decks the main guardrail
+  is open onto the landing.
 - **Bracing**: every corner bay is braced on both outside faces. From a
   corner the side goes skip 2, brace, skip 2, brace (brace every 3rd bay); a
   free end braces its end bay. Every diagonal rises the same way

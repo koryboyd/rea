@@ -464,30 +464,38 @@ function bayComponents(f, ctx, b, i) {
     for (const z of decks) planks(f, ctx, b, z, hop.decks, vin, -1);
   }
   if (ctx.bracedBays.has(i)) faceBraces(f, levels, b, vout);
-  if (isStair) stairTower(f, ctx, b);
+  if (isStair) stairTower(f, ctx, b, decks);
 }
 
-function stairTower(f, ctx, b) {
+// Stair tower outside the bay: the stair lane runs along the tower's outer
+// face and the landing decks sit against the main scaffold, so landings open
+// onto the working decks. Every lift has guardrails on the outer face and
+// both ends, and on the main-scaffold side wherever the main bay has no
+// working deck. Each flight carries inner and outer stair handrails.
+function stairTower(f, ctx, b, decks) {
   const { system, levels, W, vout, plankW } = ctx;
   const vt = vout + W;
   for (const u of [b.u0, b.u1]) standardColumn(f, ctx, u, vt);
   const lifts = new Set(levels.liftLevels);
   for (const z of levels.ledgerLevels) {
     f.bar("ledger", b.len, [b.u0, vt, z], [b.u1, vt, z]);
-    for (const u of [b.u0, b.u1])
+    for (const u of [b.u0, b.u1]) {
       crossMember(f, ctx, u, z, lifts.has(z), vout, vt);
+    }
   }
   const stairW = system.stair?.width ?? 0.64;
   const rise = system.stair?.rise ?? 2.0;
-  const vc = vout + 0.05 + stairW / 2;
+  const vc = vt - 0.05 - stairW / 2;
+  const vd = vout + plankW / 2 + 0.02;
+  const working = new Set(decks);
+  const rail = (a, c) => f.bar("ledger", b.len, a, c, { rail: true });
   const accessKind = hasKind(system, "accessladder")
     ? "accessladder"
     : "ladder";
   levels.liftLevels.forEach((z1, k) => {
     for (const dz of [0.5, 1.0]) {
-      f.bar("ledger", b.len, [b.u0, vt, z1 + dz], [b.u1, vt, z1 + dz], {
-        rail: true,
-      });
+      rail([b.u0, vt, z1 + dz], [b.u1, vt, z1 + dz]);
+      if (!working.has(z1)) rail([b.u0, vout, z1 + dz], [b.u1, vout, z1 + dz]);
       for (const u of [b.u0, b.u1]) {
         f.bar(
           system.bareTransom ?? "transom",
@@ -498,19 +506,20 @@ function stairTower(f, ctx, b) {
         );
       }
     }
-    const vd = vt - plankW / 2 - 0.02;
     f.bar("plank", b.len, [b.u0, vd, z1], [b.u1, vd, z1], { w: plankW - 0.01 });
     const z0 = round2(z1 - rise);
     const fwd = k % 2 === 0;
     const fits = k === 0 ? z0 >= -EPS : near(z0, levels.liftLevels[k - 1]);
     if (fits) {
-      f.bar(
-        "stair",
-        b.len,
-        [fwd ? b.u0 : b.u1, vc, Math.max(0, z0)],
-        [fwd ? b.u1 : b.u0, vc, z1],
-        { w: stairW },
-      );
+      const [ua, ub] = fwd ? [b.u0, b.u1] : [b.u1, b.u0];
+      const za = Math.max(0, z0);
+      f.bar("stair", b.len, [ua, vc, za], [ub, vc, z1], { w: stairW });
+      const edge = (v) => [
+        [ua, v, za + 0.9],
+        [ub, v, z1 + 0.9],
+      ];
+      f.bar("stairrailouter", undefined, ...edge(vt - 0.06));
+      f.bar("stairrailinner", undefined, ...edge(vt - 0.04 - stairW));
     } else if (k === 0) {
       f.bar(
         accessKind,
@@ -692,6 +701,8 @@ const PART_ORDER = [
   "toeboard",
   "bracket",
   "stair",
+  "stairrailouter",
+  "stairrailinner",
   "accessladder",
   "ladder",
   "basejack",

@@ -330,3 +330,35 @@ test("every diagonal rises the same way when viewed from outside", async () => {
   );
   assert.ok(sideFaces.every((c) => c.local.b[1] > c.local.a[1]));
 });
+
+test("stair towers guard the main scaffold side at non-working lifts and rail every flight", async () => {
+  const { withShape } = await import("../src/job.js");
+  const job = withShape(exampleJob(), {
+    type: "wall",
+    length: 10,
+    height: 6.5,
+    decks: "top",
+    ladders: 0,
+    stairs: 1,
+  });
+  const built = buildJob(job);
+  const r = built.runs[0];
+  const i = [...r.stairBays][0];
+  const [u0, u1] = [r.us[i], r.us[i + 1]];
+  const vout = r.gap + r.widthSpec.width;
+  const innerRails = built.components.filter(
+    (c) =>
+      c.rail &&
+      c.kind === "ledger" &&
+      Math.abs(c.local.a[1] - vout) < 1e-6 &&
+      Math.abs(c.local.a[0] - u0) < 1e-6 &&
+      Math.abs(c.local.b[0] - u1) < 1e-6,
+  );
+  const nonWorking = r.levels.liftLevels.filter(
+    (z) => !r.levels.deckLevels.includes(z),
+  ).length;
+  assert.equal(innerRails.length, nonWorking * 2);
+  assert.equal(count(built, "01040_19"), 3);
+  assert.equal(count(built, "01041_19"), 3);
+  assert.equal(built.missing.length, 0);
+});

@@ -1,7 +1,5 @@
-import { bayLengthsOf } from "./catalog.js";
+import { ledgerColor } from "./colors.js";
 import { toWorld } from "./engine.js";
-
-const BAY_SLOTS = 8;
 
 export const SCREEN_INK = {
   wall: "var(--ink)",
@@ -13,7 +11,6 @@ export const SCREEN_INK = {
   text: "var(--ink)",
   muted: "var(--muted)",
   ground: "var(--muted)",
-  bays: Array.from({ length: BAY_SLOTS }, (_, i) => `var(--bay-${i + 1})`),
 };
 
 export const PRINT_INK = {
@@ -26,16 +23,6 @@ export const PRINT_INK = {
   text: "#1d2733",
   muted: "#6b7785",
   ground: "#6b7785",
-  bays: [
-    "#2a78d6",
-    "#eb6834",
-    "#1baf7a",
-    "#eda100",
-    "#e87ba4",
-    "#008300",
-    "#6250d6",
-    "#e34948",
-  ],
 };
 
 const f = (n) => Math.round(n * 1000) / 1000;
@@ -78,14 +65,6 @@ function readableAngle(dir) {
 
 const rotated = (p, angle, extra = "") =>
   ` transform="rotate(${f(angle)} ${f(p[0])} ${f(p[1])})"${extra}`;
-
-export function bayColorIndex(system) {
-  const lengths = [...new Set(bayLengthsOf(system))].sort((a, b) => a - b);
-  return (len) => {
-    const i = lengths.findIndex((l) => Math.abs(l - len) < 1e-6);
-    return (i < 0 ? 0 : i) % BAY_SLOTS;
-  };
-}
 
 function ladderGlyph(w, u0, u1, vIn, vOut, ink) {
   const half = Math.min(0.2, (u1 - u0) / 8);
@@ -150,7 +129,7 @@ function planRun(r, place, ink, colorOf, out) {
     out.push(
       polygon(
         quad(w, u0, u1, vIn, vOut),
-        ink.bays[colorOf(len)],
+        colorOf(len),
         0.32,
         ink.steel,
         custom,
@@ -180,12 +159,7 @@ function planRun(r, place, ink, colorOf, out) {
     const uE = r.us.at(-1);
     out.push('<g data-bay="corner">');
     out.push(
-      polygon(
-        quad(w, uE, uE + W, vIn, vOut),
-        ink.bays[colorOf(W)],
-        0.32,
-        ink.steel,
-      ),
+      polygon(quad(w, uE, uE + W, vIn, vOut), colorOf(W), 0.32, ink.steel),
     );
     if (r.cornerBraced) {
       out.push(braceMark(w(uE + 0.08, vOut), w(uE + W - 0.08, vOut)));
@@ -247,7 +221,7 @@ export function baySizes(built) {
 
 function legendRows(built, ink, colorOf, b) {
   const items = baySizes(built).map((s) => ({
-    swatch: ink.bays[colorOf(s.len)],
+    swatch: colorOf(s.len),
     label: `${dim(s.width)}×${dim(s.len)}  ×${s.count}`,
   }));
   if (built.runs.some((r) => r.bracedBays?.size > 0 || r.cornerBraced)) {
@@ -288,7 +262,7 @@ function legendRows(built, ink, colorOf, b) {
 export function planSvg(built, ink = SCREEN_INK) {
   const out = [];
   const pts = [];
-  const colorOf = bayColorIndex(built.system);
+  const colorOf = ledgerColor;
   built.runs.forEach((r, i) => {
     const place = built.places[i];
     const W = r.widthSpec.width;

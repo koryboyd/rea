@@ -126,6 +126,14 @@ const access = [
     "accessladder",
     () => "Access ladder for 1 level 2.16 m",
   )([2.16, 9.4, "07100", 45.9]),
+  row(
+    "stairrailouter",
+    () => "Outer handrail for platform stairway 2.0 m lift",
+  )([3.45, 16.0, "01040_19", 98.8]),
+  row(
+    "stairrailinner",
+    () => "Inner handrail for platform stairway 2.0 m lift",
+  )([2.15, 12.4, "01041_19", 84.0]),
 ];
 
 const base = [

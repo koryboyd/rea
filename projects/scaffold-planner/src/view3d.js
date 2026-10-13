@@ -1,21 +1,11 @@
-import { PRINT_INK, bayColorIndex } from "./drawing.js";
+import { ledgerColor, standardColor } from "./colors.js";
 
 const THREE_URL =
   "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js";
 
 // CAD look modelled on the iScaf 3D sheet: white ground, orthographic view,
 // standards coloured by length, ledgers by bay length (the plan colours),
-// navy guardrails and transoms, maroon diagonals, grey decks, black hatches.
-export const STANDARD_COLORS = {
-  0.5: "#9aa3ab",
-  1: "#d9a300",
-  1.5: "#d9532b",
-  2: "#8a5a2b",
-  2.5: "#7d9a2a",
-  3: "#7a4a9a",
-  4: "#2f5f8a",
-};
-
+// ledgers and transoms by length, navy guardrails, maroon diagonals, grey decks, black hatches.
 const FIXED = {
   rail: "#1f2f45",
   transom: "#1f2f45",
@@ -215,7 +205,7 @@ function stairParts(B, c) {
 
 function standardParts(B, c) {
   const len = Math.round((c.b[2] - c.a[2]) * 100) / 100;
-  B.tube(STANDARD_COLORS[len] ?? FIXED.spigot, c.a, c.b, 0.024);
+  B.tube(standardColor(len), c.a, c.b, 0.024);
   const pitch = c.rings ?? 0.5;
   const z0 = Math.min(c.a[2], c.b[2]);
   const z1 = Math.max(c.a[2], c.b[2]);
@@ -276,11 +266,14 @@ function addComponent(B, c, ledgerColor) {
       wedgeHeads(B, c);
       return;
     }
-    case "transom":
-      if (c.profile === "u") B.box(FIXED.transom, c.a, c.b, 0.05, 0.06, -0.03);
-      else B.tube(FIXED.transom, c.a, c.b, 0.024);
+    case "transom": {
+      const len = Math.hypot(c.b[0] - c.a[0], c.b[1] - c.a[1]);
+      const color = c.rail ? FIXED.rail : ledgerColor(len);
+      if (c.profile === "u") B.box(color, c.a, c.b, 0.05, 0.06, -0.03);
+      else B.tube(color, c.a, c.b, 0.024);
       wedgeHeads(B, c);
       return;
+    }
     case "brace":
       B.tube(FIXED.brace, c.a, c.b, 0.02);
       return;
@@ -317,6 +310,10 @@ function addComponent(B, c, ledgerColor) {
     case "accessladder":
       ladderParts(B, c);
       return;
+    case "stairrailouter":
+    case "stairrailinner":
+      B.tube(FIXED.alu, c.a, c.b, 0.021);
+      return;
     case "tietube":
       B.tube(FIXED.tie, c.a, c.b, 0.024);
       return;
@@ -324,10 +321,7 @@ function addComponent(B, c, ledgerColor) {
   }
 }
 
-function ledgerColorFor(built) {
-  const index = bayColorIndex(built.system);
-  return (len) => PRINT_INK.bays[index(Math.round(len * 100) / 100)];
-}
+const ledgerColorFor = () => ledgerColor;
 
 function buildMeshes(THREE, built) {
   const B = makeBatcher(THREE);
@@ -373,7 +367,7 @@ export function legend3d(built) {
   for (const c of built.components) {
     if (c.kind === "standard")
       std.add(Math.round((c.b[2] - c.a[2]) * 100) / 100);
-    if (c.kind === "ledger" && !c.rail) {
+    if ((c.kind === "ledger" || c.kind === "transom") && !c.rail) {
       ledgers.add(
         Math.round(Math.hypot(c.b[0] - c.a[0], c.b[1] - c.a[1]) * 100) / 100,
       );
@@ -384,7 +378,7 @@ export function legend3d(built) {
     `<span><i style="background:${color}"></i>${label}</span>`;
   const stdChips = [...std]
     .sort((a, b) => a - b)
-    .map((l) => chip(STANDARD_COLORS[l] ?? FIXED.spigot, `${l.toFixed(1)} m`))
+    .map((l) => chip(standardColor(l), `${l.toFixed(1)} m`))
     .join("");
   const ledChips = [...ledgers]
     .sort((a, b) => a - b)
@@ -392,8 +386,8 @@ export function legend3d(built) {
     .join("");
   return `<div class="legend3d">
     <div><b>Standards</b>${stdChips}</div>
-    <div><b>Ledgers</b>${ledChips}</div>
-    <div><b>Other</b>${chip(FIXED.rail, "Guardrails, transoms")}${chip(FIXED.brace, "Diagonals")}${chip(FIXED.deck, "Steel decks")}${chip(FIXED.hatch, "Ladder hatch")}${chip(FIXED.jack, "Base jacks")}</div>
+    <div><b>Ledgers, transoms</b>${ledChips}</div>
+    <div><b>Other</b>${chip(FIXED.rail, "Guardrails")}${chip(FIXED.brace, "Diagonals")}${chip(FIXED.deck, "Steel decks")}${chip(FIXED.hatch, "Ladder hatch")}${chip(FIXED.jack, "Base jacks")}</div>
   </div>`;
 }
 
