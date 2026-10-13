@@ -373,7 +373,13 @@ function planks(f, ctx, b, z, count, vFrom, dirSign = 1) {
   }
 }
 
-function deckBay(f, ctx, b, z, hatch) {
+const HATCH_OPENING = 0.8;
+
+// Hatch openings swap ends every lift so each ladder rises through the
+// opening above and stands on solid deck below, never through steel.
+const hatchEnd = (k) => (k % 2 === 0 ? "start" : "end");
+
+function deckBay(f, ctx, b, z, hatch, openEnd = "start") {
   const { system, boards, plankW, W, vin } = ctx;
   const from = vin + (W - boards * plankW) / 2;
   if (!hatch) {
@@ -389,21 +395,28 @@ function deckBay(f, ctx, b, z, hatch) {
     sized ? b.len : undefined,
     [b.u0, from + hw / 2, z],
     [b.u1, from + hw / 2, z],
-    { w: hw - 0.01 },
+    {
+      w: hw - 0.01,
+      opening: openEnd,
+      openLen: HATCH_OPENING,
+    },
   );
   planks(f, ctx, b, z, Math.max(0, boards - 2), from + hw);
 }
 
 function ladderInBay(f, ctx, b) {
-  const { system, vin, plankW, levels } = ctx;
-  const v = vin + plankW;
+  const { system, vin, plankW, boards, W, levels } = ctx;
+  const v = vin + (W - boards * plankW) / 2 + plankW;
   const accessKind = hasKind(system, "accessladder")
     ? "accessladder"
     : "ladder";
   levels.liftLevels.forEach((z1, k) => {
     const z0 = k === 0 ? 0 : levels.liftLevels[k - 1];
-    const a = [b.u0 + 0.35, v, z0];
-    const c = [b.u0 + 0.35 + (z1 - z0) * 0.3, v, z1];
+    const fromStart = hatchEnd(k) === "start";
+    const top = fromStart ? b.u0 + HATCH_OPENING / 2 : b.u1 - HATCH_OPENING / 2;
+    const foot = top + (fromStart ? 1 : -1) * (z1 - z0) * 0.3;
+    const a = [foot, v, z0];
+    const c = [top, v, z1];
     if (!system.integratedLadder) f.bar("ladder", undefined, a, c, { w: 0.4 });
     else if (k === 0) f.bar(accessKind, undefined, a, c, { w: 0.4 });
     else f.visual("ladder", a, c, { w: 0.4 });
@@ -456,8 +469,12 @@ function bayComponents(f, ctx, b, i) {
     f.bar("ledger", b.len, [b.u0, vout, z], [b.u1, vout, z]);
   }
   railsAndToes(f, ctx, b, isStair, decks, hop);
-  for (const z of isLadder ? levels.liftLevels : decks) {
-    deckBay(f, ctx, b, z, isLadder);
+  if (isLadder) {
+    levels.liftLevels.forEach((z, k) =>
+      deckBay(f, ctx, b, z, true, hatchEnd(k)),
+    );
+  } else {
+    for (const z of decks) deckBay(f, ctx, b, z, false);
   }
   if (isLadder) ladderInBay(f, ctx, b);
   if (hop && !(i === 0 && lay.skipFirst)) {

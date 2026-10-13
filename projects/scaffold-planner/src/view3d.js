@@ -203,6 +203,26 @@ function stairParts(B, c) {
   }
 }
 
+function hatchParts(B, c) {
+  const L = Math.hypot(c.b[0] - c.a[0], c.b[1] - c.a[1]) || 1;
+  const t = Math.min(0.5, (c.openLen ?? 0) / L);
+  const at = (k) => [
+    c.a[0] + (c.b[0] - c.a[0]) * k,
+    c.a[1] + (c.b[1] - c.a[1]) * k,
+    c.a[2],
+  ];
+  const w = c.w ?? 0.6;
+  const [s0, s1, o0, o1] =
+    c.opening === "end" ? [0, 1 - t, 1 - t, 1] : [t, 1, 0, t];
+  B.box(FIXED.hatch, at(s0), at(s1), w, 0.05, 0.025);
+  if (t <= 0) return;
+  const { px, py } = across(c, w - 0.04);
+  for (const sgn of [-1, 1]) {
+    const off = (p) => [p[0] + sgn * px, p[1] + sgn * py, p[2]];
+    B.box(FIXED.hatch, off(at(o0)), off(at(o1)), 0.04, 0.05, 0.025);
+  }
+}
+
 function standardParts(B, c) {
   const len = Math.round((c.b[2] - c.a[2]) * 100) / 100;
   B.tube(standardColor(len), c.a, c.b, 0.024);
@@ -281,7 +301,7 @@ function addComponent(B, c, ledgerColor) {
       B.box(FIXED.deck, c.a, c.b, c.w ?? 0.3, 0.045, 0.022);
       return;
     case "hatch":
-      B.box(FIXED.hatch, c.a, c.b, c.w ?? 0.6, 0.05, 0.025);
+      hatchParts(B, c);
       return;
     case "toeboard":
       B.box(
@@ -391,7 +411,29 @@ export function legend3d(built) {
   </div>`;
 }
 
-export async function mount3d(container, built) {
+function addUnderlay(THREE, group, underlay, render) {
+  if (!underlay?.url) return;
+  const texture = new THREE.TextureLoader().load(underlay.url, render);
+  texture.colorSpace = THREE.SRGBColorSpace;
+  const mat = new THREE.MeshBasicMaterial({
+    map: texture,
+    transparent: true,
+    opacity: 0.6,
+  });
+  const plane = new THREE.Mesh(
+    new THREE.PlaneGeometry(underlay.w, underlay.h),
+    mat,
+  );
+  plane.rotation.x = -Math.PI / 2;
+  plane.position.set(
+    underlay.x + underlay.w / 2,
+    -0.002,
+    underlay.y + underlay.h / 2,
+  );
+  group.add(plane);
+}
+
+export async function mount3d(container, built, underlay) {
   const THREE = await import(THREE_URL);
   const renderer = new THREE.WebGLRenderer({ antialias: true });
   renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
@@ -425,11 +467,12 @@ export async function mount3d(container, built) {
     renderer.setSize(width, height, false);
     render();
   };
-  const update = (next) => {
+  const update = (next, plan) => {
     scene.remove(group);
     group = buildMeshes(THREE, next);
     addFootprint(THREE, group, next);
     const box = new THREE.Box3().setFromObject(group);
+    addUnderlay(THREE, group, plan, render);
     scene.add(group);
     if (!box.isEmpty()) {
       box.getCenter(target);
@@ -440,7 +483,7 @@ export async function mount3d(container, built) {
     controls.apply();
   };
   new ResizeObserver(resize).observe(container);
-  update(built);
+  update(built, underlay);
   resize();
   return { update };
 }

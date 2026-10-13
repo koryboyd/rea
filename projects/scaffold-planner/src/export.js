@@ -124,6 +124,23 @@ async function addDrawing(pdf, svg, y, maxH) {
   pdf.addImage(img.data, "JPEG", 14, y, w, h, undefined, "FAST");
 }
 
+async function underlayData(job) {
+  const u = job.fromPlan && job.underlay;
+  if (!u?.url) return null;
+  try {
+    const blob = await (await fetch(u.url)).blob();
+    const url = await new Promise((resolve, reject) => {
+      const r = new FileReader();
+      r.onload = () => resolve(r.result);
+      r.onerror = reject;
+      r.readAsDataURL(blob);
+    });
+    return { ...u, url };
+  } catch {
+    return null;
+  }
+}
+
 export async function planPdf(job, built, quote, loads) {
   if (!globalThis.jspdf) await loadScript(JSPDF_URL);
   const pdf = new globalThis.jspdf.jsPDF({
@@ -134,7 +151,8 @@ export async function planPdf(job, built, quote, loads) {
   });
   let page = 1;
   header(pdf, job, `Scaffold plan: ${built.system.name}`, page);
-  await addDrawing(pdf, planSvg(built, PRINT_INK), 28, 170);
+  const underlay = await underlayData(job);
+  await addDrawing(pdf, planSvg(built, PRINT_INK, { underlay }), 28, 170);
   for (const [index, r] of built.runs.entries()) {
     pdf.addPage();
     header(

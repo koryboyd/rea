@@ -9,12 +9,15 @@ indicative leg-load check.
 1. **Job**: name, client, site.
 2. **Scaffold**: tap the system, width and lift. Then either pick a shape (one
    wall, L shape, three sides, all round) and set length, depth and height
-   with the − / + buttons, or tap **From plan** to map a house plan.
-3. **From plan**: choose the architect PDF (or a photo), pick the floor plan
+   with the − / + buttons, or tap **Builder's plan** to map a house plan.
+3. **Builder's plan** (picker, or **Upload builder's plan** on the Plan tab):
+   choose the architect PDF (or a photo), pick the floor plan
    page, then tap the outside corners of the house. Taps snap to the wall lines
    in the PDF, the scale comes from the title block (or **Set scale** off a
    known dimension), edge lengths show as you go, and steps under 0.5 m are
-   smoothed to the outer face. Each wall becomes a side you can edit.
+   smoothed to the outer face. Each wall becomes a side you can edit, and the
+   drawing stays under the 2D plan, the PDF plan page and the 3D ground (toggle
+   **Show builder's plan**). The drawing is kept with the page's file store.
 4. Per side: work height, boarded decks, ladder bays, stair towers and
    hop-ups (1 or 2 decks). Per bay: use the hand edit tools on the Plan tab.
 5. **Plan**, **3D**, **Parts**, **Quote**, **Loads** show the results. **PDF**
@@ -39,7 +42,9 @@ footprint on the ground. A key under the view lists the colours in use.
 - **Hop-ups**: brackets on the inner standards at every working deck with 1 or
   2 decks per bay. The wall gap widens to fit the bracket automatically.
 - **Ladder access**: hatch deck at every lift in the ladder bay (Ringscaff
-  hatch has an integrated ladder; the bottom lift uses an access ladder).
+  hatch has an integrated ladder; the bottom lift uses an access ladder). The
+  0.8 m hatch opening alternates ends lift to lift, so each ladder climbs
+  through an opening and stands on solid deck, never through steel.
 - **Stair access**: a tower bay outside the scaffold (2.57 m bay on Ringscaff)
   with a platform stair per 2.0 m lift. The stair lane runs along the tower's
   outer face with inner and outer stair handrails on every flight (Scafom

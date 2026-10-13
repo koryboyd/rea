@@ -42,3 +42,8 @@ export function stepper({ id, attrs, value, step, min = 0, label }) {
     <button type="button" class="step" data-step="${step}" data-for="${id}" aria-label="More ${esc(label)}">+</button>
   </div>`;
 }
+
+export const underlayOf = (s) =>
+  s.job.fromPlan && s.job.underlay && s.showUnderlay !== false
+    ? s.job.underlay
+    : null;

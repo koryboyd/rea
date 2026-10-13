@@ -1,6 +1,14 @@
 import { DUTY_CLASSES, SYSTEMS, getSystem } from "./catalog.js";
 import { elevationSvg, planSvg } from "./drawing.js";
-import { STATUS_TEXT, esc, field, money, opt, stepper } from "./ui.js";
+import {
+  STATUS_TEXT,
+  esc,
+  field,
+  money,
+  opt,
+  stepper,
+  underlayOf,
+} from "./ui.js";
 
 export const TOOLS = [
   { id: "brace", label: "Brace" },
@@ -11,6 +19,17 @@ export const TOOLS = [
   { id: "decks", label: "Board every lift" },
   { id: "reset", label: "Reset bay" },
 ];
+
+function builderPlan(state) {
+  const u = state.job.fromPlan && state.job.underlay;
+  const body = u
+    ? `<label class="check"><input type="checkbox" id="show-underlay" data-underlay${state.showUnderlay !== false ? " checked" : ""}/> Show the builder's plan under the scaffold</label>${u.local ? '<p class="note warn">This plan was not saved with the job and shows for this visit only.</p>' : ""}`
+    : '<p class="note">Upload the builder\'s PDF or a photo of the plan, pick the floor plan page, and tap the outside corners of the house. The scaffold is mapped around it and the plan sits underneath.</p>';
+  return `<div class="panel">
+    <div class="panel-head"><h3>Builder's plan</h3><button class="btn small primary" data-act="import-plan">${u ? "Replace plan" : "Upload builder's plan"}</button></div>
+    ${body}
+  </div>`;
+}
 
 function toolbar(state) {
   const chips = TOOLS.map(
@@ -38,10 +57,11 @@ function planView(state) {
     : "";
   return (
     checkPanel +
+    builderPlan(state) +
     toolbar(state) +
     `<div class="panel">
     <div class="panel-head"><h2>Plan</h2><button class="btn small primary" data-act="pdf">PDF</button></div>
-    <div class="drawing">${planSvg(built)}</div>
+    <div class="drawing">${planSvg(built, undefined, { underlay: underlayOf(state) })}</div>
     <p class="note">Each bay shows width × length and the working deck height. Colours match bay sizes. Tap a side to see its elevation.</p>
   </div>
   <div class="panel" id="elevation">

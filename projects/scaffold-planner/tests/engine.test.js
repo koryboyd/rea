@@ -362,3 +362,43 @@ test("stair towers guard the main scaffold side at non-working lifts and rail ev
   assert.equal(count(built, "01041_19"), 3);
   assert.equal(built.missing.length, 0);
 });
+
+test("ladders rise through hatch openings and stand on solid deck", async () => {
+  const { withShape } = await import("../src/job.js");
+  const job = withShape(exampleJob(), {
+    type: "wall",
+    length: 8,
+    height: 8.5,
+    decks: "all",
+    ladders: 1,
+  });
+  const built = buildJob(job);
+  const hatches = built.components.filter((c) => c.kind === "hatch");
+  const ladders = built.components.filter(
+    (c) => c.kind === "ladder" || c.kind === "accessladder",
+  );
+  assert.ok(ladders.length >= 4);
+  const openingAt = (z) => {
+    const h = hatches.find((x) => Math.abs(x.local.a[2] - z) < 1e-6);
+    if (!h) return null;
+    const [u0, u1] = [h.local.a[0], h.local.b[0]];
+    return h.opening === "start" ? [u0, u0 + h.openLen] : [u1 - h.openLen, u1];
+  };
+  for (const l of ladders) {
+    const [foot, top] =
+      l.local.a[2] < l.local.b[2]
+        ? [l.local.a, l.local.b]
+        : [l.local.b, l.local.a];
+    const above = openingAt(top[2]);
+    assert.ok(
+      above && top[0] >= above[0] - 1e-6 && top[0] <= above[1] + 1e-6,
+      "top goes through the opening",
+    );
+    const below = openingAt(foot[2]);
+    if (below)
+      assert.ok(
+        foot[0] < below[0] - 1e-6 || foot[0] > below[1] + 1e-6,
+        "foot is on solid deck",
+      );
+  }
+});

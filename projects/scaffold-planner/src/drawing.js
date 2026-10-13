@@ -259,8 +259,14 @@ function legendRows(built, ink, colorOf, b) {
   };
 }
 
-export function planSvg(built, ink = SCREEN_INK) {
+export function planSvg(built, ink = SCREEN_INK, opts = {}) {
   const out = [];
+  const u = opts.underlay;
+  if (u?.url) {
+    out.push(
+      `<image href="${esc(u.url)}" x="${f(u.x)}" y="${f(u.y)}" width="${f(u.w)}" height="${f(u.h)}" preserveAspectRatio="none" opacity="0.55"/>`,
+    );
+  }
   const pts = [];
   const colorOf = ledgerColor;
   built.runs.forEach((r, i) => {

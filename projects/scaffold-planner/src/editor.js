@@ -1,7 +1,7 @@
 import { DUTY_CLASSES, SYSTEMS, bayLengthsOf } from "./catalog.js";
 import { planSvg } from "./drawing.js";
 import { SHAPES, usesDepth } from "./job.js";
-import { esc, field, metres, opt, seg, stepper } from "./ui.js";
+import { esc, field, metres, opt, seg, stepper, underlayOf } from "./ui.js";
 
 const ICON_SIDES = {
   wall: ["M6 6H34"],
@@ -44,7 +44,7 @@ function shapePicker(state) {
     state.job.shape?.type ?? (state.job.fromPlan ? "plan" : "custom");
   const buttons = [
     ...Object.entries(SHAPES),
-    ["plan", { label: "From plan" }],
+    ["plan", { label: "Builder's plan" }],
     ["custom", { label: "Custom" }],
   ]
     .map(
@@ -125,7 +125,7 @@ function scaffoldPanel(state) {
     ${shapePicker(state)}
     ${body}
     <ul class="sides" id="side-summary">${sideSummary(state.built)}</ul>
-    <div class="drawing mini" id="mini-plan">${state.built ? planSvg(state.built) : ""}</div>
+    <div class="drawing mini" id="mini-plan">${state.built ? planSvg(state.built, undefined, { underlay: underlayOf(state) }) : ""}</div>
   </div>`;
 }
 

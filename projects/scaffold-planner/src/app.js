@@ -14,7 +14,7 @@ import {
 import { jobLoads } from "./loads.js";
 import { quoteJob } from "./quote.js";
 import { openStore } from "./store.js";
-import { STATUS_TEXT, esc, money } from "./ui.js";
+import { STATUS_TEXT, esc, money, underlayOf } from "./ui.js";
 import { TOOLS, VIEWS } from "./views.js";
 
 const $ = (sel) => document.querySelector(sel);
@@ -101,7 +101,11 @@ function refreshEditor() {
   const summary = $("#side-summary");
   if (summary) summary.innerHTML = sideSummary(state.built);
   const mini = $("#mini-plan");
-  if (mini && state.built) mini.innerHTML = planSvg(state.built);
+  if (mini && state.built) {
+    mini.innerHTML = planSvg(state.built, undefined, {
+      underlay: underlayOf(state),
+    });
+  }
   document.querySelectorAll("#pane-edit .run").forEach((el, i) => {
     const r = state.built?.runs[i];
     if (r) el.querySelector(".run-meta").textContent = runMeta(r);
@@ -111,7 +115,7 @@ function refreshEditor() {
 async function show3d() {
   const pane = $("#pane-view");
   if (state.view3d && $("#view3d")) {
-    state.view3d.update(state.built);
+    state.view3d.update(state.built, underlayOf(state));
     $("#legend3d").innerHTML = state.legend3d?.(state.built) ?? "";
     return;
   }
@@ -119,7 +123,7 @@ async function show3d() {
   try {
     const { mount3d, legend3d } = await import("./view3d.js");
     if (state.tab !== "3d") return;
-    state.view3d = await mount3d($("#view3d"), state.built);
+    state.view3d = await mount3d($("#view3d"), state.built, underlayOf(state));
     state.legend3d = legend3d;
     $("#legend3d").innerHTML = legend3d(state.built);
   } catch {
@@ -165,7 +169,7 @@ function update({ structural = false, persist = true } = {}) {
   else refreshEditor();
   renderStrip();
   if (state.tab === "3d" && state.view3d) {
-    state.view3d.update(state.built);
+    state.view3d.update(state.built, underlayOf(state));
     const legendEl = $("#legend3d");
     if (legendEl) legendEl.innerHTML = state.legend3d?.(state.built) ?? "";
   } else if (state.tab !== "edit") rerenderViewKeepingFocus();
@@ -281,7 +285,11 @@ function onInput(e) {
   else if (el.dataset.run) onRunInput(el);
   else if (el.dataset.q) onQuoteInput(el);
   else if (el.dataset.rate) onRateInput(el);
-  else if (el.matches("[data-elev]")) {
+  else if (el.matches("[data-underlay]")) {
+    state.showUnderlay = el.checked;
+    renderView();
+    refreshEditor();
+  } else if (el.matches("[data-elev]")) {
     state.elevRun = Number(el.value);
     renderView();
   }
@@ -398,11 +406,21 @@ const ACTIONS = {
         ladders: 1,
         hopUps: shape.hopUps ?? 0,
       },
-      onDone: (runs) => {
+      onDone: async (runs, underlay) => {
+        const stored = underlay ? await storeUnderlay(underlay) : null;
+        state.showUnderlay = true;
         setJob(
-          { ...state.job, shape: null, closed: true, fromPlan: true, runs },
+          {
+            ...state.job,
+            shape: null,
+            closed: true,
+            fromPlan: true,
+            runs,
+            underlay: stored,
+          },
           { structural: true },
         );
+        if (!wide()) selectTab("plan");
         toast(`Mapped ${runs.length} sides from the plan`);
       },
     });
@@ -495,6 +513,22 @@ const ACTIONS = {
     update({ persist: false });
   },
 };
+
+async function storeUnderlay({ blob, ...place }) {
+  const claude = globalThis.window?.claude;
+  try {
+    const assets = claude?.use ? await claude.use("assets") : null;
+    if (assets) {
+      const up = await assets.upload(blob, { type: "image/jpeg" });
+      return { ...place, id: up.id, url: up.url };
+    }
+  } catch {
+    toast(
+      "The plan shows for this visit only. It could not be saved with the job.",
+    );
+  }
+  return { ...place, url: URL.createObjectURL(blob), local: true };
+}
 
 function hopDecks(width) {
   return (

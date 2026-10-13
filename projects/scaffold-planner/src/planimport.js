@@ -403,7 +403,10 @@ function tracer(root, src, onFinish) {
     } else if (act === "finish") {
       const metres = st.pts.map((p) => [p[0] * src.mPerPt, p[1] * src.mPerPt]);
       const smooth = root.querySelector("#imp-smooth").checked;
-      onFinish(smooth ? simplifyOutline(squareUp(metres), 0.5) : metres);
+      const outline = smooth ? simplifyOutline(squareUp(metres), 0.5) : metres;
+      underlayFrom(src, outline)
+        .catch(() => null)
+        .then((underlay) => onFinish(outline, underlay));
       return;
     } else {
       return;
@@ -415,6 +418,52 @@ function tracer(root, src, onFinish) {
   new ResizeObserver(fit).observe(stage);
   hint();
   fit();
+}
+
+const UNDERLAY_MARGIN_M = 3;
+const UNDERLAY_MAX_PX = 2000;
+
+// Crops the plan around the traced house so it can sit under the scaffold
+// plan, and returns where the crop lies in plan metres.
+function underlayFrom(src, outline) {
+  const xs = outline.map((p) => p[0]);
+  const ys = outline.map((p) => p[1]);
+  const x0 = Math.min(...xs) - UNDERLAY_MARGIN_M;
+  const y0 = Math.min(...ys) - UNDERLAY_MARGIN_M;
+  const x1 = Math.max(...xs) + UNDERLAY_MARGIN_M;
+  const y1 = Math.max(...ys) + UNDERLAY_MARGIN_M;
+  const pxPerM = src.pxPerPt / src.mPerPt;
+  const sx = Math.max(0, x0 * pxPerM);
+  const sy = Math.max(0, y0 * pxPerM);
+  const imgW = src.image.width ?? src.image.naturalWidth;
+  const imgH = src.image.height ?? src.image.naturalHeight;
+  const sw = Math.min(imgW - sx, (x1 - x0) * pxPerM);
+  const sh = Math.min(imgH - sy, (y1 - y0) * pxPerM);
+  const k = Math.min(1, UNDERLAY_MAX_PX / Math.max(sw, sh));
+  const canvas = el("canvas", {
+    width: Math.round(sw * k),
+    height: Math.round(sh * k),
+  });
+  const ctx = canvas.getContext("2d");
+  ctx.fillStyle = "#ffffff";
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+  ctx.drawImage(src.image, sx, sy, sw, sh, 0, 0, canvas.width, canvas.height);
+  return new Promise((resolve, reject) => {
+    canvas.toBlob(
+      (blob) =>
+        blob
+          ? resolve({
+              blob,
+              x: sx / pxPerM,
+              y: sy / pxPerM,
+              w: sw / pxPerM,
+              h: sh / pxPerM,
+            })
+          : reject(new Error("crop failed")),
+      "image/jpeg",
+      0.8,
+    );
+  });
 }
 
 function pagePicker(root, doc, onPick) {
@@ -453,9 +502,16 @@ export function openPlanImport({ defaults, onDone }) {
   const body = overlay.querySelector("#imp-body");
   const close = () => overlay.remove();
   overlay.querySelector('[data-imp="close"]').addEventListener("click", close);
-  const finish = (points) => {
+  const finish = (points, underlay) => {
     close();
-    onDone(outlineToRuns(points, defaults));
+    const minX = Math.min(...points.map((p) => p[0]));
+    const minY = Math.min(...points.map((p) => p[1]));
+    const placed = underlay && {
+      ...underlay,
+      x: underlay.x - minX,
+      y: underlay.y - minY,
+    };
+    onDone(outlineToRuns(points, defaults), placed);
   };
   const fail = (msg) => {
     body.innerHTML = `<p class="note warn">${msg}</p>`;
