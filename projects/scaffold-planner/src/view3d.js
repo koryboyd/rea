@@ -5,7 +5,7 @@ const THREE_URL =
 
 // CAD look modelled on the iScaf 3D sheet: white ground, orthographic view,
 // standards coloured by length, ledgers by bay length (the plan colours),
-// ledgers and transoms by length, navy guardrails, maroon diagonals, grey decks, black hatches.
+// navy guardrails, maroon diagonals, grey decks, yellow safety gates.
 const FIXED = {
   rail: "#1f2f45",
   transom: "#1f2f45",
@@ -14,7 +14,7 @@ const FIXED = {
   spigot: "#8b9298",
   brace: "#5a2630",
   deck: "#a9adb2",
-  hatch: "#1a1a1a",
+  gate: "#e2b100",
   toe: "#7f878e",
   jack: "#c0392b",
   plate: "#9c2a1f",
@@ -203,24 +203,13 @@ function stairParts(B, c) {
   }
 }
 
-function hatchParts(B, c) {
-  const L = Math.hypot(c.b[0] - c.a[0], c.b[1] - c.a[1]) || 1;
-  const t = Math.min(0.5, (c.openLen ?? 0) / L);
-  const at = (k) => [
-    c.a[0] + (c.b[0] - c.a[0]) * k,
-    c.a[1] + (c.b[1] - c.a[1]) * k,
-    c.a[2],
-  ];
-  const w = c.w ?? 0.6;
-  const [s0, s1, o0, o1] =
-    c.opening === "end" ? [0, 1 - t, 1 - t, 1] : [t, 1, 0, t];
-  B.box(FIXED.hatch, at(s0), at(s1), w, 0.05, 0.025);
-  if (t <= 0) return;
-  const { px, py } = across(c, w - 0.04);
-  for (const sgn of [-1, 1]) {
-    const off = (p) => [p[0] + sgn * px, p[1] + sgn * py, p[2]];
-    B.box(FIXED.hatch, off(at(o0)), off(at(o1)), 0.04, 0.05, 0.025);
-  }
+function gateParts(B, c) {
+  const h = c.h ?? 0.9;
+  const up = (p, dz) => [p[0], p[1], p[2] + dz];
+  for (const dz of [0.15, 0.55, h])
+    B.tube(FIXED.gate, up(c.a, dz), up(c.b, dz), 0.016);
+  for (const p of [c.a, c.b]) B.tube(FIXED.gate, up(p, 0.02), up(p, h), 0.016);
+  B.box(FIXED.gate, up(c.a, 0.07), up(c.b, 0.07), 0.02, 0.14);
 }
 
 function standardParts(B, c) {
@@ -300,8 +289,11 @@ function addComponent(B, c, ledgerColor) {
     case "plank":
       B.box(FIXED.deck, c.a, c.b, c.w ?? 0.3, 0.045, 0.022);
       return;
-    case "hatch":
-      hatchParts(B, c);
+    case "gate":
+      gateParts(B, c);
+      return;
+    case "gatepost":
+      B.tube(FIXED.rail, c.a, c.b, 0.024);
       return;
     case "toeboard":
       B.box(
@@ -407,7 +399,7 @@ export function legend3d(built) {
   return `<div class="legend3d">
     <div><b>Standards</b>${stdChips}</div>
     <div><b>Ledgers, transoms</b>${ledChips}</div>
-    <div><b>Other</b>${chip(FIXED.rail, "Guardrails")}${chip(FIXED.brace, "Diagonals")}${chip(FIXED.deck, "Steel decks")}${chip(FIXED.hatch, "Ladder hatch")}${chip(FIXED.jack, "Base jacks")}</div>
+    <div><b>Other</b>${chip(FIXED.rail, "Guardrails")}${chip(FIXED.brace, "Diagonals")}${chip(FIXED.deck, "Steel decks")}${chip(FIXED.gate, "Safety gate")}${chip(FIXED.jack, "Base jacks")}</div>
   </div>`;
 }
 

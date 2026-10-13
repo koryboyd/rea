@@ -53,11 +53,6 @@ const decks = [
   [3.07, 21.5, "E04RS0944", 70.5],
 ].map(row("plank", (l) => `Steel deck 0.32 m U-hook ${m(l)}`));
 
-const hatches = [
-  [2.57, 21.0, "E04RS0467", 259.0],
-  [3.07, 24.5, "E04RS0468", 287.8],
-].map(row("hatch", (l) => `Ladder hatch deck with ladder ${m(l)} x 0.61 m`));
-
 const braceName = (l, h) => `Diagonal ${l.toFixed(2)} x ${h.toFixed(2)} m`;
 const braces = [
   [0.73, 7.2, "E04RS0017", 34.5, 2.0],
@@ -136,6 +131,29 @@ const access = [
   )([2.15, 12.4, "01041_19", 84.0]),
 ];
 
+// Ladders: part numbers and weights from the Ringscaff assortment; prices
+// are not in the 2019 price list, so hire is a placeholder until entered.
+const ladders = [
+  [2.0, 16.3, "E04RS0454", 0.9],
+  [3.0, 23.6, "E04RS0455", 1.2],
+  [4.0, 30.4, "E04RS0456", 1.5],
+].map(([length, weight, code, hire]) => ({
+  code,
+  name: `Ladder ${m(length)} (price not in 2019 price list)`,
+  kind: "ladder",
+  length,
+  weight,
+  hire,
+}));
+
+const gates = [
+  row(
+    "gate",
+    () => "Safety gate self-closing 0.90 x 0.80 m",
+  )([0.8, 10.2, "E04RS0533", 79.0]),
+  row("gatepost", () => "Guardrail post 1.70 m")([1.7, 8.7, "E04RS0501", 47.9]),
+];
+
 const base = [
   row("basejack", () => "Base jack 0.60 m")([0.6, 3.9, "08358", 14.3]),
   row(
@@ -191,7 +209,6 @@ export const RINGSCAFF = {
     { width: 1.4, boards: 4 },
   ],
   bareTransom: "ledger",
-  integratedLadder: true,
   source: "Scafom-rux RINGSCAFF price list 06/2019",
   components: [
     ...standards,
@@ -202,7 +219,8 @@ export const RINGSCAFF = {
     ...shortBraces,
     ...toeboards,
     ...base,
-    ...hatches,
+    ...ladders,
+    ...gates,
     ...brackets,
     ...access,
     ...site,

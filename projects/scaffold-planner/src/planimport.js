@@ -403,10 +403,11 @@ function tracer(root, src, onFinish) {
     } else if (act === "finish") {
       const metres = st.pts.map((p) => [p[0] * src.mPerPt, p[1] * src.mPerPt]);
       const smooth = root.querySelector("#imp-smooth").checked;
-      const outline = smooth ? simplifyOutline(squareUp(metres), 0.5) : metres;
+      const squared = smooth ? squareUp(metres) : null;
+      const outline = squared ? simplifyOutline(squared, 0.5) : metres;
       underlayFrom(src, outline)
         .catch(() => null)
-        .then((underlay) => onFinish(outline, underlay));
+        .then((underlay) => onFinish(outline, underlay, squared));
       return;
     } else {
       return;
@@ -502,7 +503,7 @@ export function openPlanImport({ defaults, onDone }) {
   const body = overlay.querySelector("#imp-body");
   const close = () => overlay.remove();
   overlay.querySelector('[data-imp="close"]').addEventListener("click", close);
-  const finish = (points, underlay) => {
+  const finish = (points, underlay, traced) => {
     close();
     const minX = Math.min(...points.map((p) => p[0]));
     const minY = Math.min(...points.map((p) => p[1]));
@@ -511,7 +512,7 @@ export function openPlanImport({ defaults, onDone }) {
       x: underlay.x - minX,
       y: underlay.y - minY,
     };
-    onDone(outlineToRuns(points, defaults), placed);
+    onDone(outlineToRuns(points, defaults, traced), placed);
   };
   const fail = (msg) => {
     body.innerHTML = `<p class="note warn">${msg}</p>`;

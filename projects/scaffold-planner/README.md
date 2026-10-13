@@ -19,7 +19,7 @@ indicative leg-load check.
    drawing stays under the 2D plan, the PDF plan page and the 3D ground (toggle
    **Show builder's plan**). The drawing is kept with the page's file store.
 4. Per side: work height, boarded decks, ladder bays, stair towers and
-   hop-ups (1 or 2 decks). Per bay: use the hand edit tools on the Plan tab.
+   hop-ups (Auto, none, 1 or 2 decks) and gap to the wall. Per bay: use the hand edit tools on the Plan tab.
 5. **Plan**, **3D**, **Parts**, **Quote**, **Loads** show the results. **PDF**
    exports the plan, elevations, parts list and quote.
 
@@ -29,8 +29,8 @@ Every component is placed in 3D, and the parts list counts those placements,
 so the 3D view and the parts list always match. The 3D view uses a CAD look
 modelled on iScaf: white ground, isometric (orthographic) camera, standards
 coloured by length, ledgers and transoms coloured by length with the same
-colours as the plan bays, navy guardrails, maroon diagonals, grey steel decks, black hatch
-decks, red base jacks, rosettes, wedge heads and spigots, and the house
+colours as the plan bays, navy guardrails, maroon diagonals, grey steel decks, yellow
+safety gates, red base jacks, rosettes, wedge heads and spigots, and the house
 footprint on the ground. A key under the view lists the colours in use.
 
 - **Outside corners**: the side reaching the corner gets a square corner bay
@@ -40,11 +40,24 @@ footprint on the ground. A key under the view lists the colours in use.
   the second starts outside the first side's outer face.
 - **Angled corners**: both sides stop at the corner and the plan flags it.
 - **Hop-ups**: brackets on the inner standards at every working deck with 1 or
-  2 decks per bay. The wall gap widens to fit the bracket automatically.
-- **Ladder access**: hatch deck at every lift in the ladder bay (Ringscaff
-  hatch has an integrated ladder; the bottom lift uses an access ladder). The
-  0.8 m hatch opening alternates ends lift to lift, so each ladder climbs
-  through an opening and stands on solid deck, never through steel.
+  2 decks per bay. On **Auto** (the default) a side whose gap to the wall is
+  over 300 mm gets the narrowest hop-up that leaves 300 mm or less, and the
+  gap widens to fit the bracket. From a builder's plan, stretches where the
+  house steps back behind the scaffold line get hop-ups on those bays only,
+  when the bracket clears the wall; otherwise the checks say so.
+- **Ladder access**: no hatches. Ground to first lift is a ladder outside the
+  outer face, resting on the top guardrail, landing through a self-closing
+  safety gate (E04RS0533) hung between the standard and a guardrail post
+  (E04RS0501). Above that, every lift in the ladder bay is decked bar where
+  the ladder goes, set in **More settings › Ladder bay decks**:
+  - **Sideways decks**: bay-width decks laid across the bay with a 0.8 m+
+    opening at one end (2.57 m bays or longer).
+  - **Miss two decks**: two decks left out along one side (1.57 m bays or
+    longer, 3+ decks across).
+    The opening swaps end or side every lift, so each ladder stands on deck
+    and climbs through the opening above, never through steel. Ladders are
+    picked to run about 1 m past the landing (Ringscaff 2 / 3 / 4 m ladders).
+    Ladder bay ends get guardrails at lifts where the next bay has no deck.
 - **Stair access**: a tower bay outside the scaffold (2.57 m bay on Ringscaff)
   with a platform stair per 2.0 m lift. The stair lane runs along the tower's
   outer face with inner and outer stair handrails on every flight (Scafom
@@ -57,12 +70,12 @@ footprint on the ground. A key under the view lists the colours in use.
   free end braces its end bay. Every diagonal rises the same way
   (bottom-left to top-right from outside). Change the spacing under More
   settings.
-- **Hand edits**: on the Plan tab pick a part (brace, ladder hatch, stair,
+- **Hand edits**: on the Plan tab pick a part (brace, ladder bay, stair,
   hop-up 1 or 2, board every lift, reset) and tap bays to add or remove it, or
   drag the part onto a bay. Corner bays take braces only. Edited bays show a
   dashed outline, and edits are kept per side so they survive shape changes
   (Clear hand edits removes them).
-- **Checks**: gaps over 225 mm without hop-ups or inner guardrails, missing
+- **Checks**: gaps over 300 mm without hop-ups or inner guardrails, missing
   catalogue sizes, and access bays that need a particular bay length.
 
 ## Systems
@@ -71,8 +84,9 @@ footprint on the ground. A key under the view lists the colours in use.
   bays (LA 07 dimension). Part numbers, weights and list prices come from the
   Scafom-rux RINGSCAFF price list 06/2019. Toe boards are steel (LA 07
   steel toe boards). U-ledgers carry the decks, tubular
-  ledgers fill the other lifts and end guardrails, and ladder bays use the
-  2.57 / 3.07 m hatch deck with integrated ladder.
+  ledgers fill the other lifts and end guardrails. Ladders (E04RS0454–0456)
+  are in the assortment but not the 2019 price list, so their hire is a
+  placeholder.
 - **Cuplok**: 0.8 / 1.3 m widths and 0.8–2.5 m bays (example figures).
 - **Kwikstage**: 0.7 / 1.2 m widths and 0.7–2.4 m bays (example figures).
 
@@ -93,7 +107,7 @@ mixes Cuplok and Kwikstage components.
 | Lifts             | Work height rounded up to whole lifts. Standards run to the top deck + 1.0 m for guardrails                                                                                                          |
 | Standards         | Fewest system standard lengths that make the column height                                                                                                                                           |
 | Ledgers, transoms | Base (kicker) lift plus every lift, both faces. Guardrail and mid-rail on each working deck                                                                                                          |
-| Planks            | Boards per width × each boarded deck. Ladder bays swap two boards for a hatch deck                                                                                                                   |
+| Planks            | Boards per width × each boarded deck. Ladder bays deck every lift bar the opening                                                                                                                    |
 | Braces            | Outer-face brace in every lift of every 2nd bay and both end bays of each side                                                                                                                       |
 | Ties              | Every N standards at each tie height                                                                                                                                                                 |
 | Quote             | Hire (qty × $/week × weeks) + erect and dismantle $/m² of face + cartage both ways + margin + GST                                                                                                    |

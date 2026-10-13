@@ -16,6 +16,7 @@ const shapeIcon = (type) =>
   `<svg viewBox="0 0 40 30" aria-hidden="true"><rect x="9" y="9" width="22" height="12" class="ico-bldg"/>${ICON_SIDES[type].map((d) => `<path d="${d}" class="ico-scaf"/>`).join("")}</svg>`;
 
 const HOPS = [
+  { value: "auto", label: "Auto" },
   { value: 0, label: "None" },
   { value: 1, label: "1 deck" },
   { value: 2, label: "2 decks" },
@@ -78,7 +79,7 @@ function shapeInputs(shape) {
     ${s("ladders", "Ladder access bays", 1, 0)}
     ${s("stairs", "Stair towers", 1, 0)}
   </div>
-  ${field("Hop-ups (inside, every working deck)", seg({ scope: "shape", key: "hopUps", current: Number(shape.hopUps) || 0, label: "Hop-ups", options: HOPS }))}
+  ${field("Hop-ups (inside, every working deck)", seg({ scope: "shape", key: "hopUps", current: shape.hopUps ?? "auto", label: "Hop-ups", options: HOPS }), "", "Auto puts hop-ups where the gap to the house is over 300 mm")}
   ${field(
     "Boarded decks",
     seg({
@@ -133,15 +134,15 @@ export function runMeta(r) {
   return `${r.bays.length} bays (${r.bays.join(" + ")}) = ${metres(r.scaffoldLength)} · ${r.levels.lifts} lifts · top deck +${r.levels.topDeck} m`;
 }
 
-function runCard(run, i, built) {
+function runCard(run, i, built, job) {
   const id = run.id;
-  const rstep = (k, label, step, min) =>
+  const rstep = (k, label, step, min, fallback) =>
     field(
       label,
       stepper({
         id: `${id}-${k}`,
         attrs: `data-run="${id}" data-rk="${k}"`,
-        value: run[k],
+        value: run[k] ?? fallback,
         step,
         min,
         label,
@@ -159,6 +160,7 @@ function runCard(run, i, built) {
       ${rstep("height", "Work height (m)", 0.5, 0.5)}
       ${rstep("ladderBays", "Ladder bays", 1, 0)}
       ${rstep("stairBays", "Stair towers", 1, 0)}
+      ${rstep("wallGap", "Gap to wall (m)", 0.05, 0, job.wallGap)}
       ${field(
         "Decks",
         seg({
@@ -174,7 +176,7 @@ function runCard(run, i, built) {
         }),
       )}
     </div>
-    ${field("Hop-ups", seg({ scope: "run", key: "hopUps", id, current: Number(run.hopUps) || 0, label: "Hop-ups", options: HOPS }))}
+    ${field("Hop-ups", seg({ scope: "run", key: "hopUps", id, current: run.hopUps ?? "auto", label: "Hop-ups", options: HOPS }))}
     <label class="check"><input type="checkbox" id="${id}-flip" data-run="${id}" data-rk="flip"${run.flip ? " checked" : ""}/> Scaffold on the other side of this wall</label>
     <div class="run-meta">${built?.runs[i] ? esc(runMeta(built.runs[i])) : ""}</div>
   </div>`;
@@ -183,7 +185,7 @@ function runCard(run, i, built) {
 function sidesPanel(state) {
   return `<div class="panel">
     <div class="panel-head"><h2>Sides</h2><button class="btn small primary" data-act="add">Add side</button></div>
-    ${state.job.runs.map((r, i) => runCard(r, i, state.built)).join("")}
+    ${state.job.runs.map((r, i) => runCard(r, i, state.built, state.job)).join("")}
   </div>`;
 }
 
@@ -213,7 +215,22 @@ function morePanel(job, open) {
           .map(([k, d]) => opt(k, `${d.label} (${d.kgPerBay} kg)`, job.duty))
           .join("")}</select>`,
       )}
-      ${n("wallGap", "Gap to wall (m)", 0.05)}
+      ${n("wallGap", "Gap to wall (m)", 0.05, "over 0.30 gets hop-ups on Auto")}
+      ${field(
+        "Ladder bay decks",
+        seg({
+          scope: "job",
+          key: "ladderDecks",
+          current: job.ladderDecks ?? "sideways",
+          label: "Ladder bay decks",
+          options: [
+            { value: "sideways", label: "Sideways decks" },
+            { value: "slot", label: "Miss two decks" },
+          ],
+        }),
+        "span-all",
+        "Ground to first lift is an outside ladder with a safety gate",
+      )}
       ${n("loadedDecks", "Decks loaded at once", 1)}
       ${n("braceEvery", "Brace every", 1, "bays, plus both end bays of each side · 0 = none")}
       ${n("tieEveryBays", "Tie every", 1, "standards · 0 = none")}

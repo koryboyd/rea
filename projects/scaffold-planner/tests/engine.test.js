@@ -63,8 +63,11 @@ test("ringscaff 6.5 m deck uses 0.5 m rings and Scafom parts", () => {
   assert.equal(front.levels.topDeck, 6.5);
   assert.deepEqual(front.levels.ledgerLevels, [0.5, 2.5, 4.5, 6.5]);
   assert.equal(built.missing.length, 0);
-  assert.equal(count(built, "E04RS0467"), 3);
-  assert.equal(count(built, "07100"), 1);
+  assert.equal(count(built, "E04RS0533"), 1);
+  assert.equal(count(built, "E04RS0501"), 1);
+  assert.equal(count(built, "E04RS0456"), 1);
+  assert.equal(count(built, "E04RS0455"), 2);
+  assert.equal(count(built, "07100"), 0);
   assert.equal(count(built, "08358"), count(built, "E04RS0002"));
   const ring = getSystem("ringscaff").components.map((c) => c.code);
   assert.ok(built.parts.every((p) => ring.includes(p.code)));
@@ -363,42 +366,142 @@ test("stair towers guard the main scaffold side at non-working lifts and rail ev
   assert.equal(built.missing.length, 0);
 });
 
-test("ladders rise through hatch openings and stand on solid deck", async () => {
-  const { withShape } = await import("../src/job.js");
-  const job = withShape(exampleJob(), {
-    type: "wall",
-    length: 8,
-    height: 8.5,
-    decks: "all",
-    ladders: 1,
-  });
-  const built = buildJob(job);
-  const hatches = built.components.filter((c) => c.kind === "hatch");
-  const ladders = built.components.filter(
-    (c) => c.kind === "ladder" || c.kind === "accessladder",
-  );
-  assert.ok(ladders.length >= 4);
-  const openingAt = (z) => {
-    const h = hatches.find((x) => Math.abs(x.local.a[2] - z) < 1e-6);
-    if (!h) return null;
-    const [u0, u1] = [h.local.a[0], h.local.b[0]];
-    return h.opening === "start" ? [u0, u0 + h.openLen] : [u1 - h.openLen, u1];
-  };
-  for (const l of ladders) {
-    const [foot, top] =
-      l.local.a[2] < l.local.b[2]
-        ? [l.local.a, l.local.b]
-        : [l.local.b, l.local.a];
-    const above = openingAt(top[2]);
-    assert.ok(
-      above && top[0] >= above[0] - 1e-6 && top[0] <= above[1] + 1e-6,
-      "top goes through the opening",
+const plankRect = (c) => {
+  const [a, b] = [c.local.a, c.local.b];
+  const h = (c.w ?? 0.3) / 2;
+  return Math.abs(a[0] - b[0]) < 1e-6
+    ? [a[0] - h, a[0] + h, Math.min(a[1], b[1]), Math.max(a[1], b[1])]
+    : [Math.min(a[0], b[0]), Math.max(a[0], b[0]), a[1] - h, a[1] + h];
+};
+
+function onDeck(built, [u, v, z], margin = 0) {
+  return built.components.some((c) => {
+    if (c.kind !== "plank" || Math.abs(c.local.a[2] - z) > 1e-6) return false;
+    const [u0, u1, v0, v1] = plankRect(c);
+    return (
+      u >= u0 - margin &&
+      u <= u1 + margin &&
+      v >= v0 - margin &&
+      v <= v1 + margin
     );
-    const below = openingAt(foot[2]);
-    if (below)
-      assert.ok(
-        foot[0] < below[0] - 1e-6 || foot[0] > below[1] + 1e-6,
-        "foot is on solid deck",
+  });
+}
+
+function ladderJob(ladderDecks) {
+  return import("../src/job.js").then(({ withShape }) => {
+    const job = withShape(exampleJob(), {
+      type: "wall",
+      length: 8,
+      height: 8.5,
+      decks: "top",
+      ladders: 1,
+    });
+    return buildJob({ ...job, ladderDecks });
+  });
+}
+
+for (const style of ["sideways", "slot"]) {
+  test(`${style} ladder bays: ladders stand on deck and never climb through steel`, async () => {
+    const built = await ladderJob(style);
+    const r = built.runs[0];
+    const k = [...r.ladderBays][0];
+    assert.equal(r.ladderStyles[k], style);
+    assert.equal(built.missing.length, 0);
+    assert.equal(built.components.filter((c) => c.kind === "hatch").length, 0);
+    const ladders = built.components.filter((c) => c.kind === "ladder");
+    assert.equal(ladders.length, r.levels.liftLevels.length);
+    for (const l of ladders) {
+      const [foot, top] = [l.local.a, l.local.b];
+      assert.ok(top[2] > foot[2]);
+      const lifts = r.levels.liftLevels;
+      const landing = lifts.find((z) => z > foot[2] + 0.5);
+      const t = (landing - foot[2]) / (top[2] - foot[2]);
+      const at = [
+        foot[0] + (top[0] - foot[0]) * t,
+        foot[1] + (top[1] - foot[1]) * t,
+        landing,
+      ];
+      assert.ok(top[2] >= landing + 0.8, "ladder runs on past the landing");
+      if (foot[2] === 0) continue;
+      assert.ok(!onDeck(built, at, 0.2), `clear opening at +${landing}`);
+      assert.ok(onDeck(built, foot), `foot on deck at +${foot[2]}`);
+    }
+    for (const z of r.levels.liftLevels) {
+      const u0 = r.us[k];
+      const u1 = r.us[k + 1];
+      const decked = built.components.filter(
+        (c) =>
+          c.kind === "plank" &&
+          Math.abs(c.local.a[2] - z) < 1e-6 &&
+          plankRect(c)[0] >= u0 - 1e-6 &&
+          plankRect(c)[1] <= u1 + 1e-6 &&
+          plankRect(c)[2] >= r.gap - 1e-6,
       );
-  }
+      assert.ok(decked.length > 0, `ladder bay decked at +${z}`);
+    }
+  });
+}
+
+test("ground ladder lands outside through a safety gate at the first lift", async () => {
+  const built = await ladderJob("sideways");
+  const r = built.runs[0];
+  const k = [...r.ladderBays][0];
+  const z1 = r.levels.liftLevels[0];
+  const vOut = r.gap + r.widthSpec.width;
+  const ground = built.components.find(
+    (c) => c.kind === "ladder" && c.local.a[2] === 0,
+  );
+  assert.ok(ground.local.a[1] > vOut, "foot outside the outer face");
+  const gate = built.components.find((c) => c.kind === "gate");
+  assert.ok(Math.abs(gate.local.a[2] - z1) < 1e-6);
+  assert.ok(Math.abs(gate.local.a[1] - vOut) < 1e-6);
+  const uLand = ground.local.a[0];
+  assert.ok(uLand > gate.local.a[0] && uLand < gate.local.b[0]);
+  const rails = built.components.filter(
+    (c) =>
+      c.rail &&
+      c.kind === "ledger" &&
+      Math.abs(c.local.a[1] - vOut) < 1e-6 &&
+      Math.abs(c.local.a[2] - z1 - 0.5) < 1e-6 &&
+      Math.min(c.local.a[0], c.local.b[0]) < uLand &&
+      Math.max(c.local.a[0], c.local.b[0]) > uLand,
+  );
+  assert.equal(rails.length, 0, "no guardrail across the ladder exit");
+  assert.ok(r.us[k] <= uLand && uLand <= r.us[k + 1]);
+});
+
+test("hop-ups go in where the gap to the house is over 300 mm", async () => {
+  const { withShape } = await import("../src/job.js");
+  const base = withShape(exampleJob(), {
+    type: "wall",
+    length: 10,
+    height: 4.5,
+    decks: "top",
+    ladders: 0,
+  });
+  assert.equal(count(buildJob(base), "E04RS0449"), 0);
+  const wide = buildJob({
+    ...base,
+    runs: base.runs.map((r) => ({ ...r, wallGap: 0.5 })),
+  });
+  const r = wide.runs[0];
+  assert.ok(r.bayHops.every((h) => h === 0.39));
+  assert.equal(wide.notes.length, 0);
+  const stepped = buildJob({
+    ...base,
+    runs: base.runs.map((x) => ({
+      ...x,
+      setbacks: [{ u0: 0, u1: 2.4, depth: 0.4 }],
+    })),
+  });
+  const s = stepped.runs[0];
+  assert.equal(s.gap, 0.3);
+  assert.equal(s.bayHops[0], 0.39);
+  assert.ok(s.bayHops.slice(1).every((h) => h === 0));
+  const off = buildJob({
+    ...base,
+    runs: base.runs.map((x) => ({ ...x, wallGap: 0.5, hopUps: 0 })),
+  });
+  assert.ok(off.runs[0].bayHops.every((h) => h === 0));
+  assert.ok(off.notes.some((n) => n.includes("over 300 mm")));
 });

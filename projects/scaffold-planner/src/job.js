@@ -13,7 +13,7 @@ export const newRun = (overrides = {}) => ({
   decks: "top",
   ladderBays: 0,
   stairBays: 0,
-  hopUps: 0,
+  hopUps: "auto",
   flip: false,
   ...overrides,
 });
@@ -64,7 +64,7 @@ export function shapeRuns(shape) {
     decks: shape.decks,
     ladderBays: i === front ? Number(shape.ladders) || 0 : 0,
     stairBays: i === front ? Number(shape.stairs) || 0 : 0,
-    hopUps: Number(shape.hopUps) || 0,
+    hopUps: shape.hopUps ?? "auto",
     flip: false,
   }));
 }
@@ -108,6 +108,7 @@ export function exampleJob() {
     maxBay: 2.57,
     wallGap: 0.3,
     braceEvery: 3,
+    ladderDecks: "sideways",
     tieVertical: 4.0,
     tieEveryBays: 2,
     innerGuardrail: false,

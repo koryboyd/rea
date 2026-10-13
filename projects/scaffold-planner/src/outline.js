@@ -97,7 +97,58 @@ export function squareUp(points, toleranceDeg = 3) {
   return out;
 }
 
-export function outlineToRuns(points, defaults) {
+// Where smoothing pushed a wall out to the outer face, the house sits further
+// back behind that part of the side. Returns per side the stretches (metres
+// from the side's start) and how far back the traced wall is.
+export function setbacksFor(traced, outline) {
+  const sign = signedArea(outline) < 0 ? -1 : 1;
+  const edges = outline.map((a, i) => {
+    const b = outline[(i + 1) % outline.length];
+    const L = len(sub(b, a));
+    const e = [(b[0] - a[0]) / L, (b[1] - a[1]) / L];
+    return { a, L, e, inward: [-sign * e[1], sign * e[0]] };
+  });
+  const hits = edges.map(() => []);
+  traced.forEach((p, i) => {
+    const q = traced[(i + 1) % traced.length];
+    const n = Math.max(1, Math.ceil(len(sub(q, p)) / 0.05));
+    for (let k = 0; k <= n; k++) {
+      const x = add(p, [((q[0] - p[0]) * k) / n, ((q[1] - p[1]) * k) / n]);
+      let best = -1;
+      let bestD = Infinity;
+      edges.forEach((ed, j) => {
+        const r = sub(x, ed.a);
+        const t = dot(r, ed.e);
+        const d = dot(r, ed.inward);
+        if (t < -0.01 || t > ed.L + 0.01 || d < -0.01 || d >= bestD) return;
+        best = j;
+        bestD = d;
+      });
+      if (best >= 0 && bestD > 0.05 && bestD < 1.5)
+        hits[best].push([dot(sub(x, edges[best].a), edges[best].e), bestD]);
+    }
+  });
+  return hits.map((list) => {
+    const out = [];
+    for (const [t, d] of list.sort((a, b) => a[0] - b[0])) {
+      const last = out.at(-1);
+      if (last && t - last.u1 <= 0.1) {
+        last.u1 = t;
+        last.depth = Math.max(last.depth, d);
+      } else out.push({ u0: t, u1: t, depth: d });
+    }
+    return out
+      .filter((s) => s.u1 - s.u0 > 0.05)
+      .map((s) => ({
+        u0: round3(s.u0),
+        u1: round3(s.u1),
+        depth: round3(s.depth),
+      }));
+  });
+}
+
+export function outlineToRuns(points, defaults, traced) {
+  const setbacks = traced ? setbacksFor(traced, points) : [];
   const pts = points.map((p) => [round3(p[0]), round3(p[1])]);
   const minX = Math.min(...pts.map((p) => p[0]));
   const minY = Math.min(...pts.map((p) => p[1]));
@@ -115,7 +166,8 @@ export function outlineToRuns(points, defaults) {
       decks: defaults.decks,
       ladderBays: i === 0 ? defaults.ladders : 0,
       stairBays: 0,
-      hopUps: defaults.hopUps ?? 0,
+      hopUps: defaults.hopUps ?? "auto",
+      ...(setbacks[i]?.length ? { setbacks: setbacks[i] } : {}),
       flip: false,
     };
   });

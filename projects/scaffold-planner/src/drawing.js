@@ -5,7 +5,7 @@ export const SCREEN_INK = {
   wall: "var(--ink)",
   steel: "var(--steel)",
   deck: "var(--deck)",
-  hatch: "var(--accent)",
+  accent: "var(--accent)",
   brace: "var(--brace)",
   tie: "var(--tie)",
   text: "var(--ink)",
@@ -17,7 +17,7 @@ export const PRINT_INK = {
   wall: "#1d2733",
   steel: "#4f6478",
   deck: "#c9a227",
-  hatch: "#d9822b",
+  accent: "#d9822b",
   brace: "#2f6f9f",
   tie: "#8a3b8f",
   text: "#1d2733",
@@ -83,6 +83,20 @@ function ladderGlyph(w, u0, u1, vIn, vOut, ink) {
   return out.join("");
 }
 
+// Outside ladder from the ground with the safety gate in the guardrail.
+function exitGlyph(w, g0, g1, vOut, ink) {
+  const um = (g0 + g1) / 2;
+  const [vA, vB] = [vOut + 0.12, vOut + 0.75];
+  const out = [
+    line(w(g0, vOut), w(g1, vOut), ink.accent, 0.12),
+    line(w(um - 0.2, vA), w(um - 0.2, vB), ink.text, 0.035),
+    line(w(um + 0.2, vA), w(um + 0.2, vB), ink.text, 0.035),
+  ];
+  for (let v = vA + 0.12; v < vB; v += 0.18)
+    out.push(line(w(um - 0.2, v), w(um + 0.2, v), ink.text, 0.03));
+  return out.join("");
+}
+
 function bayLabels(w, angle, label, sub, u0, u1, vIn, vOut, ink) {
   const len = u1 - u0;
   const width = vOut - vIn;
@@ -145,7 +159,7 @@ function planRun(r, place, ink, colorOf, out) {
     if (r.ladderBays.has(i)) out.push(ladderGlyph(w, u0, u1, vIn, vOut, ink));
     if (r.stairBays.has(i)) {
       out.push(
-        polygon(quad(w, u0, u1, vOut, vOut + W), ink.hatch, 0.45, ink.steel),
+        polygon(quad(w, u0, u1, vOut, vOut + W), ink.accent, 0.45, ink.steel),
       );
       out.push(bayLabels(w, angle, "STAIR", deck, u0, u1, vOut, vOut + W, ink));
     }
@@ -155,6 +169,8 @@ function planRun(r, place, ink, colorOf, out) {
     );
     out.push("</g>");
   });
+  for (const [g0, g1] of r.exits ?? [])
+    out.push(exitGlyph(w, g0, g1, vOut, ink));
   if (r.layout.cornerBay) {
     const uE = r.us.at(-1);
     out.push('<g data-bay="corner">');
@@ -190,7 +206,10 @@ function planRun(r, place, ink, colorOf, out) {
       );
     }
   });
-  const reach = vOut + (r.stairBays.size ? W : 0);
+  const reach = Math.max(
+    vOut + (r.stairBays.size ? W : 0),
+    r.exits?.length ? vOut + 0.75 : 0,
+  );
   const labelAt = w((r.us[0] + r.us.at(-1)) / 2, reach + 0.55);
   out.push(
     text(
@@ -228,9 +247,11 @@ function legendRows(built, ink, colorOf, b) {
     items.push({ bar: ink.brace, label: "Braced face" });
   }
   if (built.runs.some((r) => r.ladderBays.size > 0))
-    items.push({ glyph: "ladder", label: "Ladder hatch bay" });
+    items.push({ glyph: "ladder", label: "Ladder bay" });
+  if (built.runs.some((r) => r.exits?.length))
+    items.push({ bar: ink.accent, label: "Safety gate" });
   if (built.runs.some((r) => r.stairBays.size > 0))
-    items.push({ swatch: ink.hatch, label: "Stair tower" });
+    items.push({ swatch: ink.accent, label: "Stair tower" });
   if (built.runs.some((r) => r.bayHops?.some((h) => h > 0)))
     items.push({ swatch: ink.muted, label: "Hop-up" });
   const itemW = 3.4;
@@ -302,9 +323,11 @@ const STYLE = {
   transom: ["steel", 0.035],
   brace: ["brace", 0.035],
   toeboard: ["deck", 0.06],
-  stair: ["hatch", 0.08],
+  stair: ["accent", 0.08],
   ladder: ["text", 0.04],
   accessladder: ["text", 0.04],
+  gate: ["accent", 0.07],
+  gatepost: ["steel", 0.05],
 };
 
 export function elevationSvg(built, index, ink = SCREEN_INK) {
@@ -327,17 +350,18 @@ export function elevationSvg(built, index, ink = SCREEN_INK) {
   const seen = new Set();
   for (const c of comps) {
     const { a, b } = c.local;
-    if (c.kind === "plank" || c.kind === "hatch") {
-      const key = `${f(a[0])}|${f(b[0])}|${f(a[2])}|${c.kind}`;
+    if (c.kind === "plank") {
+      const h = c.across ? (c.w ?? 0.3) / 2 : 0;
+      const [ua, ub] = [Math.min(a[0], b[0]) - h, Math.max(a[0], b[0]) + h];
+      const key = `${f(ua)}|${f(ub)}|${f(a[2])}`;
       if (seen.has(key)) continue;
       seen.add(key);
+      out.push(line(P(ua, a[2]), P(ub, b[2]), ink.deck, 0.1));
+      continue;
+    }
+    if (c.kind === "gate") {
       out.push(
-        line(
-          P(a[0], a[2]),
-          P(b[0], b[2]),
-          c.kind === "hatch" ? ink.hatch : ink.deck,
-          0.1,
-        ),
+        `<rect x="${f(Math.min(a[0], b[0]))}" y="${f(top - a[2] - 0.9)}" width="${f(Math.abs(b[0] - a[0]))}" height="0.9" fill="none" stroke="${ink.accent}" stroke-width="0.05"/>`,
       );
       continue;
     }

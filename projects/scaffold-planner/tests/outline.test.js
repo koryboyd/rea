@@ -108,3 +108,23 @@ test("operator list paths become page segments", () => {
   assert.deepEqual(segs[0], [10, 100, 20, 100]);
   assert.equal(segs.length, 5);
 });
+
+test("setbacks record where smoothing pushed a side off the house", async () => {
+  const { setbacksFor, simplifyOutline } = await import("../src/outline.js");
+  const traced = [
+    [0, 0],
+    [4, 0],
+    [4, 0.3],
+    [6, 0.3],
+    [6, 0],
+    [10, 0],
+    [10, 8],
+    [0, 8],
+  ];
+  const outline = simplifyOutline(traced, 0.5);
+  const backs = setbacksFor(traced, outline);
+  const all = backs.flat();
+  assert.equal(all.length, 1);
+  assert.ok(Math.abs(all[0].depth - 0.3) < 0.01);
+  assert.ok(Math.abs(all[0].u1 - all[0].u0 - 2) < 0.15);
+});

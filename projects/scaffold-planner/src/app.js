@@ -1,7 +1,7 @@
 import { SYSTEMS } from "./catalog.js";
 import { planSvg } from "./drawing.js";
 import { editorHtml, runMeta, sideSummary } from "./editor.js";
-import { buildJob } from "./engine.js";
+import { LADDER_BAY_NOTE, buildJob } from "./engine.js";
 import { partsCsv, planPdf, saveFile, slug } from "./export.js";
 import {
   blankJob,
@@ -404,7 +404,7 @@ const ACTIONS = {
         height: shape.height ?? state.job.runs[0]?.height ?? 4,
         decks: shape.decks ?? "top",
         ladders: 1,
-        hopUps: shape.hopUps ?? 0,
+        hopUps: shape.hopUps ?? "auto",
       },
       onDone: async (runs, underlay) => {
         const stored = underlay ? await storeUnderlay(underlay) : null;
@@ -578,11 +578,7 @@ function applyTool(runIndex, key, tool) {
     after &&
     after.stairBays.size + after.ladderBays.size === before
   ) {
-    toast(
-      tool === "stair"
-        ? "A stair needs a 2.57 m bay."
-        : "A ladder hatch needs a 2.57 or 3.07 m bay.",
-    );
+    toast(tool === "stair" ? "A stair needs a 2.57 m bay." : LADDER_BAY_NOTE);
   }
 }
 
