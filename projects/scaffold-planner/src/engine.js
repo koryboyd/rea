@@ -204,11 +204,18 @@ export function layoutRuns(job, system, places) {
     return next < 0 ? "free" : cornerBetween(p, places[next]);
   });
   const gOf = (i) => {
-    const hop = (system.hopUps ?? []).find(
-      (h) => h.decks === Number(job.runs[i]?.hopUps),
-    );
-    return hop
-      ? Math.max(job.wallGap, round2(hop.bracket + 0.05))
+    const run = job.runs[i];
+    const wanted = [
+      Number(run?.hopUps) || 0,
+      ...Object.values(job.overrides?.[run?.id]?.bays ?? {}).map(
+        (b) => Number(b.hopUps) || 0,
+      ),
+    ];
+    const widths = (system.hopUps ?? [])
+      .filter((h) => wanted.includes(h.decks))
+      .map((h) => h.bracket);
+    return widths.length
+      ? Math.max(job.wallGap, round2(Math.max(...widths) + 0.05))
       : job.wallGap;
   };
   const gap = job.runs.map((_, i) => gOf(i));
@@ -255,12 +262,15 @@ function pickBays(bays, count, okLength, exclude = new Set()) {
   return { set, short: count - n };
 }
 
-function bracedBayIndexes(bays, every, canBrace) {
+// A corner bay counts as the first braced bay, so the side carries on with
+// "skip every-1, brace". A free end braces its end bay.
+function bracedBayIndexes(bays, every, canBrace, lay) {
   const set = new Set();
   if (every <= 0 || bays.length === 0) return set;
   const wanted = [];
-  for (let i = 0; i < bays.length; i += every) wanted.push(i);
-  wanted.push(bays.length - 1);
+  const first = lay.startCorner === "convex" ? every - 1 : 0;
+  for (let i = first; i < bays.length; i += every) wanted.push(i);
+  if (!lay.cornerBay) wanted.push(bays.length - 1);
   for (const i of wanted) {
     const order = bays
       .map((_, k) => k)
@@ -400,10 +410,10 @@ function ladderInBay(f, ctx, b) {
   });
 }
 
-function railsAndToes(f, ctx, b, isStair) {
-  const { job, levels, vin, vout, hop } = ctx;
+function railsAndToes(f, ctx, b, isStair, decks, hop) {
+  const { job, vin, vout } = ctx;
   const innerRails = job.innerGuardrail && !hop;
-  for (const d of levels.deckLevels) {
+  for (const d of decks) {
     for (const dz of [0.5, 1.0]) {
       if (!isStair) {
         f.bar("ledger", b.len, [b.u0, vout, d + dz], [b.u1, vout, d + dz], {
@@ -436,20 +446,22 @@ function faceBraces(f, levels, b, v) {
 }
 
 function bayComponents(f, ctx, b, i) {
-  const { levels, vin, vout, lay, hop } = ctx;
+  const { levels, vin, vout, lay } = ctx;
+  const hop = ctx.bayHop(i);
+  const decks = ctx.bayDecks(i);
   const isLadder = ctx.ladderBays.has(i);
   const isStair = ctx.stairBays.has(i);
   for (const z of levels.ledgerLevels) {
     f.bar("ledger", b.len, [b.u0, vin, z], [b.u1, vin, z]);
     f.bar("ledger", b.len, [b.u0, vout, z], [b.u1, vout, z]);
   }
-  railsAndToes(f, ctx, b, isStair);
-  for (const z of isLadder ? levels.liftLevels : levels.deckLevels) {
+  railsAndToes(f, ctx, b, isStair, decks, hop);
+  for (const z of isLadder ? levels.liftLevels : decks) {
     deckBay(f, ctx, b, z, isLadder);
   }
   if (isLadder) ladderInBay(f, ctx, b);
   if (hop && !(i === 0 && lay.skipFirst)) {
-    for (const z of levels.deckLevels) planks(f, ctx, b, z, hop.decks, vin, -1);
+    for (const z of decks) planks(f, ctx, b, z, hop.decks, vin, -1);
   }
   if (ctx.bracedBays.has(i)) faceBraces(f, levels, b, vout);
   if (isStair) stairTower(f, ctx, b);
@@ -526,7 +538,7 @@ function cornerBay(f, ctx, uE, levels, pieces) {
     f.bar("ledger", W, [uE, vout, z], [uE + W, vout, z]);
   }
   const offset = (W - boards * plankW) / 2;
-  for (const { z0, z1, h } of levels.intervals) {
+  for (const { z0, z1, h } of ctx.cornerBraced ? levels.intervals : []) {
     if (h < 0.75) continue;
     f.bar("brace", W, [uE + W, vout, z0], [uE, vout, z1], { corner: true }, h);
     f.bar(
@@ -583,6 +595,8 @@ function runComponents(sink, i, run, lay, place, base) {
     lengthsOf(system, "standard"),
   );
   const W = job.width;
+  const ov = job.overrides?.[run.id] ?? {};
+  const bayOv = (k) => ov.bays?.[k] ?? {};
   const us = [lay.uStart];
   for (const b of lay.bays) us.push(round2(us.at(-1) + b));
   const ctx = {
@@ -594,49 +608,67 @@ function runComponents(sink, i, run, lay, place, base) {
     W,
     vin: lay.gap,
     vout: lay.gap + W,
-    hop: (system.hopUps ?? []).find((h) => h.decks === Number(run.hopUps)),
     boards: widthSpec.boards,
     plankW: system.deckWidth ?? W / widthSpec.boards,
     ladderBays: access.ladder,
     stairBays: access.stair,
-    bracedBays: bracedBayIndexes(lay.bays, job.braceEvery, (len) =>
-      levels.intervals.every(
-        ({ h }) => h < 0.75 || Boolean(findComponent(system, "brace", len, h)),
-      ),
-    ),
+    bracedBays: new Set(),
+    cornerBraced: ov.corner?.brace !== false,
   };
-  const f = frameFor(sink, place, i);
-  const decks = new Set(levels.deckLevels);
-  const lifts = new Set(levels.liftLevels);
-  us.forEach((u, j) => {
-    if (j === 0 && lay.skipFirst) return;
-    for (const v of [ctx.vin, ctx.vout]) standardColumn(f, ctx, u, v);
-    const ladderSide = access.ladder.has(j - 1) || access.ladder.has(j);
-    for (const z of levels.ledgerLevels) {
-      crossMember(f, ctx, u, z, decks.has(z) || (ladderSide && lifts.has(z)));
-    }
+  const hops = system.hopUps ?? [];
+  ctx.bayHop = (k) => {
+    const n = Number(bayOv(k).hopUps ?? run.hopUps);
+    return hops.find((h) => h.decks === n);
+  };
+  ctx.bayDecks = (k) => {
+    const want = bayOv(k).decks;
+    if (want === "all") return levels.liftLevels;
+    if (want === "top") return [levels.topDeck];
+    return levels.deckLevels;
+  };
+  const canBrace = (len) =>
+    levels.intervals.every(
+      ({ h }) => h < 0.75 || Boolean(findComponent(system, "brace", len, h)),
+    );
+  ctx.bracedBays = bracedBayIndexes(lay.bays, job.braceEvery, canBrace, lay);
+  lay.bays.forEach((len, k) => {
+    const want = bayOv(k).brace;
+    if (want === true && canBrace(len)) ctx.bracedBays.add(k);
+    if (want === false) ctx.bracedBays.delete(k);
   });
-  if (ctx.hop) {
-    for (const u of us) {
-      for (const z of levels.deckLevels) {
-        f.bar(
-          "bracket",
-          ctx.hop.bracket,
-          [u, ctx.vin, z],
-          [u, ctx.vin - ctx.hop.bracket, z],
-        );
+  const f = frameFor(sink, place, i);
+  const lifts = new Set(levels.liftLevels);
+  const sideBays = (j) =>
+    [j - 1, j].filter((k) => k >= 0 && k < lay.bays.length);
+  us.forEach((u, j) => {
+    const next = sideBays(j);
+    const decks = new Set(next.flatMap((k) => ctx.bayDecks(k)));
+    if (!(j === 0 && lay.skipFirst)) {
+      for (const v of [ctx.vin, ctx.vout]) standardColumn(f, ctx, u, v);
+      const ladderSide = next.some((k) => access.ladder.has(k));
+      for (const z of levels.ledgerLevels) {
+        crossMember(f, ctx, u, z, decks.has(z) || (ladderSide && lifts.has(z)));
       }
     }
-  }
+    const hopped = next.filter((k) => ctx.bayHop(k));
+    if (hopped.length === 0) return;
+    const width = Math.max(...hopped.map((k) => ctx.bayHop(k).bracket));
+    for (const z of new Set(hopped.flatMap((k) => ctx.bayDecks(k)))) {
+      f.bar("bracket", width, [u, ctx.vin, z], [u, ctx.vin - width, z]);
+    }
+  });
   lay.bays.forEach((len, k) =>
     bayComponents(f, ctx, { u0: us[k], u1: us[k + 1], len }, k),
   );
   const freeStart = !["convex", "concave"].includes(lay.startCorner);
   const freeEnd = !lay.cornerBay && lay.endCorner !== "concave";
   if (lay.bays.length) {
-    for (const d of levels.deckLevels) {
-      if (freeStart) railsAcross(f, ctx, us[0], d);
-      if (freeEnd) railsAcross(f, ctx, us.at(-1), d);
+    if (freeStart) {
+      for (const d of ctx.bayDecks(0)) railsAcross(f, ctx, us[0], d);
+    }
+    if (freeEnd) {
+      const last = lay.bays.length - 1;
+      for (const d of ctx.bayDecks(last)) railsAcross(f, ctx, us.at(-1), d);
     }
   }
   const tieCount = tieComponents(f, ctx, us, lay.skipFirst);
@@ -684,7 +716,7 @@ export function partsList(items, system) {
     );
 }
 
-function accessBays(run, bays, system) {
+function accessBays(run, bays, system, ov = {}) {
   const hatchLens = lengthsOf(system, "hatch").filter((l) => l > 0);
   const okHatch = (len) =>
     hatchLens.length === 0 || hatchLens.some((h) => near(h, len));
@@ -692,6 +724,24 @@ function accessBays(run, bays, system) {
   const stairLen = system.stair?.bayLength;
   const okStair = (len) => stairLen !== undefined && near(len, stairLen);
   const stair = pickBays(bays, Number(run.stairBays) || 0, okStair, ladder.set);
+  for (const [key, want] of Object.entries(ov.bays ?? {})) {
+    const k = Number(key);
+    if (k >= bays.length) continue;
+    if (want.ladder === false) ladder.set.delete(k);
+    if (want.stair === false) stair.set.delete(k);
+    if (want.ladder === true) {
+      if (okHatch(bays[k])) {
+        ladder.set.add(k);
+        stair.set.delete(k);
+      } else ladder.short++;
+    }
+    if (want.stair === true) {
+      if (okStair(bays[k])) {
+        stair.set.add(k);
+        ladder.set.delete(k);
+      } else stair.short++;
+    }
+  }
   return {
     ladder: ladder.set,
     stair: stair.set,
@@ -720,7 +770,7 @@ function buildRuns(job, system, widthSpec, sink, notes) {
   const layouts = layoutRuns(job, system, places);
   const runs = job.runs.map((run, i) => {
     const lay = layouts[i];
-    const access = accessBays(run, lay.bays, system);
+    const access = accessBays(run, lay.bays, system, job.overrides?.[run.id]);
     notes.push(...accessNotes(run, access, system));
     const built = runComponents(sink, i, run, lay, places[i], {
       job,
@@ -742,7 +792,13 @@ function buildRuns(job, system, widthSpec, sink, notes) {
       ladderBays: access.ladder,
       stairBays: access.stair,
       hopUps: Number(run.hopUps) || 0,
-      hopWidth: built.ctx.hop?.bracket ?? 0,
+      bayHops: lay.bays.map((_, k) => built.ctx.bayHop(k)?.bracket ?? 0),
+      bayDecks: lay.bays.map((_, k) => built.ctx.bayDecks(k)),
+      bracedBays: built.ctx.bracedBays,
+      cornerBraced: built.ctx.cornerBraced,
+      custom: new Set(
+        Object.keys(job.overrides?.[run.id]?.bays ?? {}).map(Number),
+      ),
       scaffoldLength,
       faceArea: round2(
         (scaffoldLength + (lay.cornerBay ? job.width : 0)) *
@@ -770,19 +826,19 @@ function buildRuns(job, system, widthSpec, sink, notes) {
         `${r.run.label}: angled corner. Close it with corner panels or extra bays on site.`,
       );
     }
-    if (r.gap > 0.226 && !r.hopUps && !job.innerGuardrail) {
+    const maxHop = Math.max(0, ...r.bayHops);
+    if (r.gap > 0.226 && !maxHop && !job.innerGuardrail) {
       notes.push(
         `${r.run.label}: gap to wall is ${r.gap} m, over 225 mm. Add a hop-up or inner guardrails.`,
       );
     }
-    const hopWidth =
-      system.hopUps?.find((h) => h.decks === r.hopUps)?.bracket ?? 0;
-    if (r.hopUps && r.gap - hopWidth > 0.226) {
+    const hopWidth = maxHop;
+    if (hopWidth && r.gap - hopWidth > 0.226) {
       notes.push(
         `${r.run.label}: ${round2(r.gap - hopWidth)} m left between hop-up and wall. Use a wider hop-up or inner guardrails.`,
       );
     }
-    if (r.hopUps && r.gap < hopWidth) {
+    if (hopWidth && r.gap < hopWidth - 1e-6) {
       notes.push(
         `${r.run.label}: gap to wall is smaller than the hop-up bracket.`,
       );

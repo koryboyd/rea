@@ -2,6 +2,29 @@ import { DUTY_CLASSES, SYSTEMS, getSystem } from "./catalog.js";
 import { elevationSvg, planSvg } from "./drawing.js";
 import { STATUS_TEXT, esc, field, money, opt, stepper } from "./ui.js";
 
+export const TOOLS = [
+  { id: "brace", label: "Brace" },
+  { id: "ladder", label: "Ladder hatch" },
+  { id: "stair", label: "Stair" },
+  { id: "hop1", label: "Hop-up 1" },
+  { id: "hop2", label: "Hop-up 2" },
+  { id: "decks", label: "Board every lift" },
+  { id: "reset", label: "Reset bay" },
+];
+
+function toolbar(state) {
+  const chips = TOOLS.map(
+    (t) =>
+      `<button type="button" class="tool" data-tool="${t.id}" aria-pressed="${state.tool === t.id}">${t.label}</button>`,
+  ).join("");
+  const edits = Object.keys(state.job.overrides ?? {}).length > 0;
+  return `<div class="panel tools-panel">
+    <div class="panel-head"><h3>Hand edit</h3>${edits ? '<button class="btn small" data-act="clear-edits">Clear hand edits</button>' : ""}</div>
+    <div class="tools" role="toolbar" aria-label="Parts to place">${chips}</div>
+    <p class="note">${state.tool ? `Tap bays on the plan to add or remove: <b>${TOOLS.find((t) => t.id === state.tool).label}</b>. Tap the part again when you're done.` : "Pick a part, then tap bays on the plan. You can also drag a part onto a bay. Tapping a bay again takes it off."}</p>
+  </div>`;
+}
+
 function planView(state) {
   const { built } = state;
   const runIdx = Math.min(state.elevRun, built.runs.length - 1);
@@ -15,6 +38,7 @@ function planView(state) {
     : "";
   return (
     checkPanel +
+    toolbar(state) +
     `<div class="panel">
     <div class="panel-head"><h2>Plan</h2><button class="btn small primary" data-act="pdf">PDF</button></div>
     <div class="drawing">${planSvg(built)}</div>

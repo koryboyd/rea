@@ -107,7 +107,7 @@ export function exampleJob() {
     width: 1.09,
     maxBay: 2.57,
     wallGap: 0.3,
-    braceEvery: 2,
+    braceEvery: 3,
     tieVertical: 4.0,
     tieEveryBays: 2,
     innerGuardrail: false,

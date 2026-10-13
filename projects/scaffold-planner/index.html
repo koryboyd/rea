@@ -665,6 +665,45 @@
     gap: 8px;
     align-items: end;
   }
+  .tools {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+  .tool {
+    font: inherit;
+    font-size: 0.85rem;
+    font-weight: 600;
+    min-height: 40px;
+    padding: 6px 12px;
+    border-radius: 99px;
+    border: 1px solid var(--line);
+    background: var(--sunk);
+    color: var(--ink);
+    cursor: grab;
+    touch-action: none;
+  }
+  .tool[aria-pressed="true"] {
+    background: var(--accent);
+    border-color: var(--accent);
+    color: var(--accent-ink);
+  }
+  .drag-ghost {
+    position: fixed;
+    left: 0;
+    top: 0;
+    z-index: 30;
+    pointer-events: none;
+    padding: 6px 10px;
+    border-radius: 99px;
+    background: var(--accent);
+    color: var(--accent-ink);
+    font-weight: 600;
+    font-size: 0.85rem;
+  }
+  [data-bay] {
+    cursor: pointer;
+  }
   .quote-total {
     display: flex;
     justify-content: space-between;

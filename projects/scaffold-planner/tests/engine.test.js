@@ -215,29 +215,62 @@ test("shape presets build chained sides with ladder access on the front", async 
   assert.equal(built.missing.length, 0);
 });
 
-test("braces go in every 2nd bay plus both end bays of each side", async () => {
+test("free sides brace the end bay, then skip 2, brace, and the last bay", async () => {
   const { withShape } = await import("../src/job.js");
   const job = withShape(exampleJob(), {
     type: "wall",
-    length: 15,
+    length: 18,
     height: 4.5,
     decks: "top",
     ladders: 0,
   });
   const built = buildJob(job);
   const r = built.runs[0];
-  assert.equal(job.braceEvery, 2);
-  const bayOf = (u) =>
-    r.us.findIndex((x, i) => u >= x - 1e-6 && u < r.us[i + 1] - 1e-6);
-  const braced = new Set(
-    built.components
-      .filter((c) => c.kind === "brace")
-      .map((c) => bayOf(Math.min(c.local.a[0], c.local.b[0]))),
-  );
+  assert.equal(job.braceEvery, 3);
   const expected = new Set();
-  for (let i = 0; i < r.bays.length; i += 2) expected.add(i);
+  for (let i = 0; i < r.bays.length; i += 3) expected.add(i);
   expected.add(r.bays.length - 1);
-  assert.deepEqual([...braced].sort(), [...expected].sort());
+  assert.deepEqual([...r.bracedBays].sort(), [...expected].sort());
+});
+
+test("from a corner bay: skip 2, brace, skip 2, brace", () => {
+  const built = buildJob(exampleJob());
+  for (const r of built.runs) {
+    const expected = [];
+    for (let i = 2; i < r.bays.length; i += 3) expected.push(i);
+    assert.deepEqual([...r.bracedBays].sort(), expected);
+  }
+});
+
+test("hand edits add or remove parts on one bay", () => {
+  const base = exampleJob();
+  const front = base.runs[0].id;
+  const job = {
+    ...base,
+    overrides: {
+      [front]: {
+        bays: {
+          0: { brace: true, hopUps: 1, decks: "all" },
+          2: { brace: false },
+          3: { stair: true },
+        },
+        corner: { brace: false },
+      },
+    },
+  };
+  const built = buildJob(job);
+  const r = built.runs[0];
+  assert.ok(r.bracedBays.has(0));
+  assert.ok(!r.bracedBays.has(2));
+  assert.ok(r.stairBays.has(3));
+  assert.equal(r.bayHops[0], 0.39);
+  assert.deepEqual(r.bayDecks[0], r.levels.liftLevels);
+  assert.equal(r.cornerBraced, false);
+  const cornerBraces = built.components.filter(
+    (c) => c.kind === "brace" && c.corner && c.run === 0,
+  );
+  assert.equal(cornerBraces.length, 0);
+  assert.equal(built.missing.length, 0);
 });
 
 test("every corner bay is braced on both outside faces each lift", () => {

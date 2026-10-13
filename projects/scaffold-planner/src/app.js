@@ -15,7 +15,7 @@ import { jobLoads } from "./loads.js";
 import { quoteJob } from "./quote.js";
 import { openStore } from "./store.js";
 import { STATUS_TEXT, esc, legend, money } from "./ui.js";
-import { VIEWS } from "./views.js";
+import { TOOLS, VIEWS } from "./views.js";
 
 const $ = (sel) => document.querySelector(sel);
 const wide = () => globalThis.matchMedia?.("(min-width: 980px)").matches;
@@ -30,6 +30,7 @@ const state = {
   settings: { overrides: {} },
   confirmDelete: null,
   confirmShape: null,
+  tool: null,
   moreOpen: false,
   saved: "Not saved",
   view3d: null,
@@ -474,6 +475,10 @@ const ACTIONS = {
       new Blob([partsCsv(state.built)], { type: "text/csv" }),
     ),
   pdf: () => exportPdf(),
+  "clear-edits": () => {
+    setJob({ ...state.job, overrides: {} }, { structural: false });
+    toast("Hand edits cleared");
+  },
   "reset-rates": () => {
     const { [state.job.system]: _dropped, ...rest } =
       state.settings.overrides ?? {};
@@ -485,7 +490,129 @@ const ACTIONS = {
   },
 };
 
+function hopDecks(width) {
+  return (
+    state.built.system.hopUps?.find((h) => Math.abs(h.bracket - width) < 1e-6)
+      ?.decks ?? 0
+  );
+}
+
+function editBay(o, r, i, tool) {
+  const b = { ...o.bays?.[i] };
+  if (tool === "brace") b.brace = !r.bracedBays.has(i);
+  if (tool === "ladder") {
+    b.ladder = !r.ladderBays.has(i);
+    if (b.ladder) b.stair = false;
+  }
+  if (tool === "stair") {
+    b.stair = !r.stairBays.has(i);
+    if (b.stair) b.ladder = false;
+  }
+  if (tool === "hop1") b.hopUps = hopDecks(r.bayHops[i]) === 1 ? 0 : 1;
+  if (tool === "hop2") b.hopUps = hopDecks(r.bayHops[i]) === 2 ? 0 : 2;
+  if (tool === "decks") b.decks = r.bayDecks[i].length > 1 ? "top" : "all";
+  return b;
+}
+
+function applyTool(runIndex, key, tool) {
+  const r = state.built?.runs[runIndex];
+  const run = state.job.runs[runIndex];
+  if (!r || !run) return;
+  const overrides = structuredClone(state.job.overrides ?? {});
+  const o = (overrides[run.id] ??= {});
+  o.bays ??= {};
+  if (key === "corner") {
+    if (tool === "reset") delete o.corner;
+    else if (tool === "brace") o.corner = { brace: !r.cornerBraced };
+    else return toast("Corner bays take braces only.");
+  } else if (tool === "reset") {
+    delete o.bays[key];
+  } else {
+    o.bays[key] = editBay(o, r, Number(key), tool);
+  }
+  setJob({ ...state.job, overrides }, { structural: false });
+  const before = r.stairBays.size + r.ladderBays.size;
+  const after = state.built.runs[runIndex];
+  if (
+    (tool === "stair" || tool === "ladder") &&
+    after &&
+    after.stairBays.size + after.ladderBays.size === before
+  ) {
+    toast(
+      tool === "stair"
+        ? "A stair needs a 2.57 m bay."
+        : "A ladder hatch needs a 2.57 or 3.07 m bay.",
+    );
+  }
+}
+
+function bayTarget(node) {
+  const bay = node?.closest?.("[data-bay]");
+  const side = node?.closest?.("[data-run-index]");
+  if (!bay || !side) return null;
+  return { runIndex: Number(side.dataset.runIndex), key: bay.dataset.bay };
+}
+
+const drag = {
+  tool: null,
+  ghost: null,
+  moved: false,
+  x0: 0,
+  y0: 0,
+  suppress: false,
+};
+
+function onPointerDown(e) {
+  const chip = e.target.closest("[data-tool]");
+  if (!chip) return;
+  drag.tool = chip.dataset.tool;
+  drag.moved = false;
+  drag.x0 = e.clientX;
+  drag.y0 = e.clientY;
+}
+
+function onPointerMove(e) {
+  if (!drag.tool) return;
+  if (!drag.moved && Math.hypot(e.clientX - drag.x0, e.clientY - drag.y0) < 8)
+    return;
+  drag.moved = true;
+  if (!drag.ghost) {
+    drag.ghost = Object.assign(document.createElement("div"), {
+      className: "drag-ghost",
+    });
+    drag.ghost.textContent = TOOLS.find((t) => t.id === drag.tool)?.label ?? "";
+    document.body.append(drag.ghost);
+  }
+  drag.ghost.style.transform = `translate(${e.clientX + 12}px, ${e.clientY + 12}px)`;
+}
+
+function onPointerUp(e) {
+  if (!drag.tool) return;
+  if (drag.moved) {
+    drag.suppress = true;
+    setTimeout(() => (drag.suppress = false), 0);
+    const target = bayTarget(document.elementFromPoint(e.clientX, e.clientY));
+    if (target) applyTool(target.runIndex, target.key, drag.tool);
+  }
+  drag.ghost?.remove();
+  Object.assign(drag, { tool: null, ghost: null, moved: false });
+}
+
 function onClick(e) {
+  if (drag.suppress) {
+    drag.suppress = false;
+    return;
+  }
+  const chip = e.target.closest("[data-tool]");
+  if (chip) {
+    state.tool = state.tool === chip.dataset.tool ? null : chip.dataset.tool;
+    renderView();
+    return;
+  }
+  if (state.tool && state.tab === "plan") {
+    const target = bayTarget(e.target);
+    if (target) return applyTool(target.runIndex, target.key, state.tool);
+  }
   const tab = e.target.closest(".tabs button");
   if (tab) return selectTab(tab.dataset.tab);
   const segBtn = e.target.closest("[data-set]");
@@ -527,6 +654,13 @@ async function connectStore() {
 
 document.addEventListener("input", onInput);
 document.addEventListener("click", onClick);
+document.addEventListener("pointerdown", onPointerDown);
+document.addEventListener("pointermove", onPointerMove);
+document.addEventListener("pointerup", onPointerUp);
+document.addEventListener("pointercancel", () => {
+  drag.ghost?.remove();
+  Object.assign(drag, { tool: null, ghost: null, moved: false });
+});
 document.addEventListener("toggle", onToggle, true);
 compute();
 renderEdit();

@@ -85,7 +85,7 @@ export const SYSTEMS = {
     name: "Scafom Cuplok",
     nodePitch: 0.5,
     deckWidth: 0.225,
-    defaultBraceEvery: 2,
+    defaultBraceEvery: 3,
     hopUps: [
       { decks: 1, bracket: 0.3 },
       { decks: 2, bracket: 0.5 },
@@ -289,7 +289,7 @@ export const SYSTEMS = {
     name: "Kwikstage",
     nodePitch: 0.5,
     deckWidth: 0.23,
-    defaultBraceEvery: 2,
+    defaultBraceEvery: 3,
     hopUps: [
       { decks: 1, bracket: 0.3 },
       { decks: 2, bracket: 0.5 },

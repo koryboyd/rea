@@ -66,8 +66,8 @@ const line = (a, b, stroke, width, extra = "") =>
 const text = (p, s, size, fill, anchor = "middle", extra = "") =>
   `<text x="${f(p[0])}" y="${f(p[1])}" font-size="${f(size)}" fill="${fill}" text-anchor="${anchor}" dominant-baseline="middle" font-family="IBM Plex Mono, ui-monospace, monospace"${extra}>${esc(s)}</text>`;
 
-const polygon = (pts, fill, opacity, stroke) =>
-  `<polygon points="${pts.map((p) => `${f(p[0])},${f(p[1])}`).join(" ")}" fill="${fill}" fill-opacity="${opacity}" stroke="${stroke}" stroke-width="0.03"/>`;
+const polygon = (pts, fill, opacity, stroke, extra = "") =>
+  `<polygon points="${pts.map((p) => `${f(p[0])},${f(p[1])}`).join(" ")}" fill="${fill}" fill-opacity="${opacity}" stroke="${stroke}" stroke-width="0.03"${extra}/>`;
 
 function readableAngle(dir) {
   let angle = (Math.atan2(dir[1], dir[0]) * 180) / Math.PI;
@@ -138,16 +138,22 @@ function planRun(r, place, ink, colorOf, out) {
   const w = (u, v) => toWorld(place, [u, v, 0]);
   const angle = readableAngle(place.dir);
   const deck = `${fmt(r.levels.topDeck)} m`;
+  const braceMark = (a, b) => line(a, b, ink.brace, 0.09);
   out.push(line(w(0, 0), w(r.run.length, 0), ink.wall, 0.12));
-  const hop = r.hopUps ? (r.hopWidth ?? 0.39) : 0;
   r.bays.forEach((len, i) => {
     const [u0, u1] = [r.us[i], r.us[i + 1]];
+    const hop = r.bayHops?.[i] ?? 0;
+    const custom = r.custom?.has(i)
+      ? ' stroke-dasharray="0.12 0.08" stroke-width="0.05"'
+      : "";
+    out.push(`<g data-bay="${i}">`);
     out.push(
       polygon(
         quad(w, u0, u1, vIn, vOut),
         ink.bays[colorOf(len)],
         0.32,
         ink.steel,
+        custom,
       ),
     );
     if (hop && !(i === 0 && r.layout.skipFirst)) {
@@ -155,6 +161,8 @@ function planRun(r, place, ink, colorOf, out) {
         polygon(quad(w, u0, u1, vIn - hop, vIn), ink.muted, 0.22, ink.steel),
       );
     }
+    if (r.bracedBays?.has(i))
+      out.push(braceMark(w(u0 + 0.08, vOut), w(u1 - 0.08, vOut)));
     if (r.ladderBays.has(i)) out.push(ladderGlyph(w, u0, u1, vIn, vOut, ink));
     if (r.stairBays.has(i)) {
       out.push(
@@ -162,22 +170,15 @@ function planRun(r, place, ink, colorOf, out) {
       );
       out.push(bayLabels(w, angle, "STAIR", deck, u0, u1, vOut, vOut + W, ink));
     }
+    const sub = (r.bayDecks?.[i]?.length ?? 1) > 1 ? "every lift" : deck;
     out.push(
-      bayLabels(
-        w,
-        angle,
-        `${dim(W)}×${dim(len)}`,
-        deck,
-        u0,
-        u1,
-        vIn,
-        vOut,
-        ink,
-      ),
+      bayLabels(w, angle, `${dim(W)}×${dim(len)}`, sub, u0, u1, vIn, vOut, ink),
     );
+    out.push("</g>");
   });
   if (r.layout.cornerBay) {
     const uE = r.us.at(-1);
+    out.push('<g data-bay="corner">');
     out.push(
       polygon(
         quad(w, uE, uE + W, vIn, vOut),
@@ -186,6 +187,10 @@ function planRun(r, place, ink, colorOf, out) {
         ink.steel,
       ),
     );
+    if (r.cornerBraced) {
+      out.push(braceMark(w(uE + 0.08, vOut), w(uE + W - 0.08, vOut)));
+      out.push(braceMark(w(uE + W, vIn + 0.08), w(uE + W, vOut - 0.08)));
+    }
     out.push(
       bayLabels(
         w,
@@ -199,6 +204,7 @@ function planRun(r, place, ink, colorOf, out) {
         ink,
       ),
     );
+    out.push("</g>");
   }
   const lines = r.layout.cornerBay ? [...r.us, r.us.at(-1) + W] : r.us;
   lines.forEach((u, j) => {
@@ -244,11 +250,14 @@ function legendRows(built, ink, colorOf, b) {
     swatch: ink.bays[colorOf(s.len)],
     label: `${dim(s.width)}×${dim(s.len)}  ×${s.count}`,
   }));
+  if (built.runs.some((r) => r.bracedBays?.size > 0 || r.cornerBraced)) {
+    items.push({ bar: ink.brace, label: "Braced face" });
+  }
   if (built.runs.some((r) => r.ladderBays.size > 0))
     items.push({ glyph: "ladder", label: "Ladder hatch bay" });
   if (built.runs.some((r) => r.stairBays.size > 0))
     items.push({ swatch: ink.hatch, label: "Stair tower" });
-  if (built.runs.some((r) => r.hopUps > 0))
+  if (built.runs.some((r) => r.bayHops?.some((h) => h > 0)))
     items.push({ swatch: ink.muted, label: "Hop-up" });
   const itemW = 3.4;
   const perRow = Math.max(1, Math.floor(b.w / itemW));
@@ -257,13 +266,17 @@ function legendRows(built, ink, colorOf, b) {
   const out = items.map((it, k) => {
     const x = b.minX + 0.4 + (k % perRow) * itemW;
     const y = top + Math.floor(k / perRow) * rowH;
-    const mark = it.glyph
-      ? line([x, y - 0.1], [x + 0.5, y - 0.1], ink.text, 0.035) +
-        line([x, y + 0.1], [x + 0.5, y + 0.1], ink.text, 0.035) +
-        [0.1, 0.25, 0.4]
-          .map((d) => line([x + d, y - 0.1], [x + d, y + 0.1], ink.text, 0.03))
-          .join("")
-      : `<rect x="${f(x)}" y="${f(y - 0.17)}" width="0.5" height="0.34" fill="${it.swatch}" fill-opacity="0.6" stroke="${ink.steel}" stroke-width="0.02"/>`;
+    const mark = it.bar
+      ? line([x, y], [x + 0.5, y], it.bar, 0.09)
+      : it.glyph
+        ? line([x, y - 0.1], [x + 0.5, y - 0.1], ink.text, 0.035) +
+          line([x, y + 0.1], [x + 0.5, y + 0.1], ink.text, 0.035) +
+          [0.1, 0.25, 0.4]
+            .map((d) =>
+              line([x + d, y - 0.1], [x + d, y + 0.1], ink.text, 0.03),
+            )
+            .join("")
+        : `<rect x="${f(x)}" y="${f(y - 0.17)}" width="0.5" height="0.34" fill="${it.swatch}" fill-opacity="0.6" stroke="${ink.steel}" stroke-width="0.02"/>`;
     return mark + text([x + 0.65, y], it.label, 0.26, ink.text, "start");
   });
   return {

@@ -16,7 +16,7 @@ indicative leg-load check.
    known dimension), edge lengths show as you go, and steps under 0.5 m are
    smoothed to the outer face. Each wall becomes a side you can edit.
 4. Per side: work height, boarded decks, ladder bays, stair towers and
-   hop-ups (1 or 2 decks).
+   hop-ups (1 or 2 decks). Per bay: use the hand edit tools on the Plan tab.
 5. **Plan**, **3D**, **Parts**, **Quote**, **Loads** show the results. **PDF**
    exports the plan, elevations, parts list and quote.
 
@@ -38,11 +38,16 @@ so the 3D view and the parts list always match.
 - **Stair access**: a tower bay outside the scaffold (2.57 m bay on Ringscaff)
   with a platform stair per 2.0 m lift, landing deck, guardrails and braces.
   The main guardrail is left open at the stair.
-- **Bracing**: a diagonal in every lift of every 2nd bay plus both end bays of
-  each side. Every diagonal on every face, corner and stair tower rises the
-  same way (bottom-left to top-right from outside). Every corner bay is braced on
-  both outside faces. Ringscaff 0.73 m bays use 0.73 × 1.0 / 1.5 / 2.0
-  diagonals (the 1.0 and 1.5 part numbers are placeholders until entered).
+- **Bracing**: every corner bay is braced on both outside faces. From a
+  corner the side goes skip 2, brace, skip 2, brace (brace every 3rd bay); a
+  free end braces its end bay. Every diagonal rises the same way
+  (bottom-left to top-right from outside). Change the spacing under More
+  settings.
+- **Hand edits**: on the Plan tab pick a part (brace, ladder hatch, stair,
+  hop-up 1 or 2, board every lift, reset) and tap bays to add or remove it, or
+  drag the part onto a bay. Corner bays take braces only. Edited bays show a
+  dashed outline, and edits are kept per side so they survive shape changes
+  (Clear hand edits removes them).
 - **Checks**: gaps over 225 mm without hop-ups or inner guardrails, missing
   catalogue sizes, and access bays that need a particular bay length.
 
