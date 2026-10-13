@@ -214,3 +214,28 @@ test("shape presets build chained sides with ladder access on the front", async 
   assert.equal(built.runs.length, 1);
   assert.equal(built.missing.length, 0);
 });
+
+test("braces go in every 2nd bay plus both end bays of each side", async () => {
+  const { withShape } = await import("../src/job.js");
+  const job = withShape(exampleJob(), {
+    type: "wall",
+    length: 15,
+    height: 4.5,
+    decks: "top",
+    ladders: 0,
+  });
+  const built = buildJob(job);
+  const r = built.runs[0];
+  assert.equal(job.braceEvery, 2);
+  const bayOf = (u) =>
+    r.us.findIndex((x, i) => u >= x - 1e-6 && u < r.us[i + 1] - 1e-6);
+  const braced = new Set(
+    built.components
+      .filter((c) => c.kind === "brace")
+      .map((c) => bayOf(Math.min(c.local.a[0], c.local.b[0]))),
+  );
+  const expected = new Set();
+  for (let i = 0; i < r.bays.length; i += 2) expected.add(i);
+  expected.add(r.bays.length - 1);
+  assert.deepEqual([...braced].sort(), [...expected].sort());
+});

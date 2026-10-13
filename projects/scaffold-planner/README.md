@@ -38,9 +38,10 @@ so the 3D view and the parts list always match.
 - **Stair access**: a tower bay outside the scaffold (2.57 m bay on Ringscaff)
   with a platform stair per 2.0 m lift, landing deck, guardrails and braces.
   The main guardrail is left open at the stair.
-- **Bracing**: a diagonal in every lift of the first bay, every Nth bay and the
-  last bay (Ringscaff default 5, others 3), moved to the nearest bay that has a
-  matching diagonal size, alternating direction each lift.
+- **Bracing**: a diagonal in every lift of every 2nd bay plus both end bays of
+  each side (so the bays either side of every corner are braced), alternating
+  direction each lift. A bay with no matching diagonal size passes its brace
+  to the nearest bay that has one. Change the spacing under More settings.
 - **Checks**: gaps over 225 mm without hop-ups or inner guardrails, missing
   catalogue sizes, and access bays that need a particular bay length.
 
@@ -72,7 +73,7 @@ mixes Cuplok and Kwikstage components.
 | Standards         | Fewest system standard lengths that make the column height                                                                                                                                           |
 | Ledgers, transoms | Base (kicker) lift plus every lift, both faces. Guardrail and mid-rail on each working deck                                                                                                          |
 | Planks            | Boards per width × each boarded deck. Ladder bays swap two boards for a hatch deck                                                                                                                   |
-| Braces            | Outer-face brace in every lift of the first bay, every Nth bay and the last bay                                                                                                                      |
+| Braces            | Outer-face brace in every lift of every 2nd bay and both end bays of each side                                                                                                                       |
 | Ties              | Every N standards at each tie height                                                                                                                                                                 |
 | Quote             | Hire (qty × $/week × weeks) + erect and dismantle $/m² of face + cartage both ways + margin + GST                                                                                                    |
 | Loads             | Worst standard per run: self weight it carries + duty load (225 / 450 / 675 kg per bay) on the loaded decks. Compared against the manufacturer's allowable leg load and the ground bearing you enter |

@@ -153,7 +153,7 @@ export const RINGSCAFF = {
   nodePitch: 0.5,
   liftHeights: [2.0],
   deckWidth: 0.32,
-  defaultBraceEvery: 5,
+  defaultBraceEvery: 2,
   hopUps: [
     { decks: 1, bracket: 0.39 },
     { decks: 2, bracket: 0.73 },

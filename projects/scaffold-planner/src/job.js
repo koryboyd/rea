@@ -107,7 +107,7 @@ export function exampleJob() {
     width: 1.09,
     maxBay: 2.57,
     wallGap: 0.3,
-    braceEvery: 5,
+    braceEvery: 2,
     tieVertical: 4.0,
     tieEveryBays: 2,
     innerGuardrail: false,
@@ -144,9 +144,11 @@ const nearest = (values, target) =>
 export function conformToSystem(job) {
   const system = SYSTEMS[job.system] ?? SYSTEMS.cuplok;
   const bays = bayLengthsOf(system);
+  const switched = job.system !== system.id || job.braceEvery === undefined;
   return {
     ...job,
     system: system.id,
+    braceEvery: switched ? (system.defaultBraceEvery ?? 2) : job.braceEvery,
     width: nearest(
       system.widths.map((w) => w.width),
       Number(job.width) || 1.2,

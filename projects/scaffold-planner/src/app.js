@@ -285,6 +285,7 @@ function onSegment(btn) {
   const value = "num" in btn.dataset ? Number(btn.dataset.v) : btn.dataset.v;
   if (set === "job") {
     const next = { ...state.job, [key]: value };
+    if (key === "system") next.braceEvery = undefined;
     setJob(key === "system" ? conformToSystem(next) : next, {
       structural: true,
     });

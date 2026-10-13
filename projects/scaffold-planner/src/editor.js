@@ -215,7 +215,7 @@ function morePanel(job, open) {
       )}
       ${n("wallGap", "Gap to wall (m)", 0.05)}
       ${n("loadedDecks", "Decks loaded at once", 1)}
-      ${n("braceEvery", "Brace every", 1, "bays · 0 = none")}
+      ${n("braceEvery", "Brace every", 1, "bays, plus both end bays of each side · 0 = none")}
       ${n("tieEveryBays", "Tie every", 1, "standards · 0 = none")}
       ${n("tieVertical", "Tie height spacing (m)", 0.5, "0 = freestanding")}
       <label class="check"><input type="checkbox" id="job-innerGuardrail" data-k="innerGuardrail"${job.innerGuardrail ? " checked" : ""}/> Inner guardrails</label>
