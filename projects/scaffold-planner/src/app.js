@@ -520,7 +520,7 @@ async function storeUnderlay({ blob, ...place }) {
     const assets = claude?.use ? await claude.use("assets") : null;
     if (assets) {
       const up = await assets.upload(blob, { type: "image/jpeg" });
-      return { ...place, id: up.id, url: up.url };
+      return { ...place, id: up.id, url: `/_blob/${up.id}` };
     }
   } catch {
     toast(
