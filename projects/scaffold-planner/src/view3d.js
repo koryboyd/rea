@@ -1,24 +1,54 @@
+import { PRINT_INK, bayColorIndex } from "./drawing.js";
+
 const THREE_URL =
   "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js";
 
-function cssColor(el, name, fallback) {
-  const v = getComputedStyle(el).getPropertyValue(name).trim();
-  return v || fallback;
-}
+// CAD look modelled on the iScaf 3D sheet: white ground, orthographic view,
+// standards coloured by length, ledgers by bay length (the plan colours),
+// navy guardrails and transoms, maroon diagonals, grey decks, black hatches.
+export const STANDARD_COLORS = {
+  0.5: "#9aa3ab",
+  1: "#d9a300",
+  1.5: "#d9532b",
+  2: "#8a5a2b",
+  2.5: "#7d9a2a",
+  3: "#7a4a9a",
+  4: "#2f5f8a",
+};
+
+const FIXED = {
+  rail: "#1f2f45",
+  transom: "#1f2f45",
+  ring: "#2b3440",
+  wedge: "#2b3440",
+  spigot: "#8b9298",
+  brace: "#5a2630",
+  deck: "#a9adb2",
+  hatch: "#1a1a1a",
+  toe: "#7f878e",
+  jack: "#c0392b",
+  plate: "#9c2a1f",
+  sole: "#4a3b26",
+  bracket: "#8a8a2a",
+  alu: "#b9bec4",
+  tie: "#8a3b8f",
+  footprint: "#b9a6c9",
+};
 
 function orbit(camera, canvas, target, onChange) {
-  const s = { theta: -0.9, phi: 1.05, radius: 30 };
+  const s = { theta: -0.95, phi: 0.95, radius: 60 };
   const pointers = new Map();
   let pinch = 0;
   const apply = () => {
     s.phi = Math.min(1.5, Math.max(0.12, s.phi));
-    s.radius = Math.min(400, Math.max(1.5, s.radius));
+    camera.zoom = Math.min(40, Math.max(0.2, camera.zoom));
     camera.position.set(
       target.x + s.radius * Math.sin(s.phi) * Math.cos(s.theta),
       target.y + s.radius * Math.cos(s.phi),
       target.z + s.radius * Math.sin(s.phi) * Math.sin(s.theta),
     );
     camera.lookAt(target);
+    camera.updateProjectionMatrix();
     onChange();
   };
   canvas.addEventListener("pointerdown", (e) => {
@@ -32,7 +62,7 @@ function orbit(camera, canvas, target, onChange) {
     if (pointers.size === 2) {
       const [a, b] = [...pointers.values()];
       const d = Math.hypot(a[0] - b[0], a[1] - b[1]);
-      if (pinch) s.radius *= pinch / d;
+      if (pinch) camera.zoom *= d / pinch;
       pinch = d;
     } else {
       s.theta += (e.clientX - prev[0]) * 0.008;
@@ -50,7 +80,7 @@ function orbit(camera, canvas, target, onChange) {
     "wheel",
     (e) => {
       e.preventDefault();
-      s.radius *= Math.exp(e.deltaY * 0.001);
+      camera.zoom *= Math.exp(-e.deltaY * 0.0012);
       apply();
     },
     { passive: false },
@@ -62,12 +92,12 @@ const V = (THREE, p) => new THREE.Vector3(p[0], p[2], p[1]);
 
 function makeBatcher(THREE) {
   const groups = new Map();
-  const push = (geoKey, colorKey, matrix) => {
-    const key = `${geoKey}|${colorKey}`;
-    if (!groups.has(key)) groups.set(key, { geoKey, colorKey, matrices: [] });
+  const push = (geoKey, color, matrix) => {
+    const key = `${geoKey}|${color}`;
+    if (!groups.has(key)) groups.set(key, { geoKey, color, matrices: [] });
     groups.get(key).matrices.push(matrix);
   };
-  const tube = (geoKey, colorKey, a, b, radius) => {
+  const tube = (color, a, b, radius) => {
     const pa = V(THREE, a);
     const pb = V(THREE, b);
     const dir = pb.clone().sub(pa);
@@ -78,8 +108,8 @@ function makeBatcher(THREE) {
       dir.normalize(),
     );
     push(
-      geoKey,
-      colorKey,
+      "tube",
+      color,
       new THREE.Matrix4().compose(
         pa.add(pb).multiplyScalar(0.5),
         q,
@@ -87,7 +117,7 @@ function makeBatcher(THREE) {
       ),
     );
   };
-  const box = (colorKey, a, b, width, height, lift = 0, shift = 0) => {
+  const box = (color, a, b, width, height, lift = 0, shift = 0) => {
     const pa = V(THREE, a);
     const pb = V(THREE, b);
     const x = pb.clone().sub(pa);
@@ -109,12 +139,12 @@ function makeBatcher(THREE) {
       z.multiplyScalar(width),
     );
     m.setPosition(centre);
-    push("box", colorKey, m);
+    push("box", color, m);
   };
-  const disc = (colorKey, p, radius, thickness) => {
+  const disc = (color, p, radius, thickness) => {
     push(
       "disc",
-      colorKey,
+      color,
       new THREE.Matrix4().compose(
         V(THREE, p),
         new THREE.Quaternion(),
@@ -136,8 +166,7 @@ function ladderParts(B, c) {
   const { dx, dy, px, py } = across(c, c.w ?? 0.4);
   for (const s of [-1, 1]) {
     B.tube(
-      "tube",
-      "alu",
+      FIXED.alu,
       [c.a[0] + s * px, c.a[1] + s * py, c.a[2]],
       [c.b[0] + s * px, c.b[1] + s * py, c.b[2]],
       0.018,
@@ -152,7 +181,7 @@ function ladderParts(B, c) {
       c.a[1] + dy * t + s * py,
       c.a[2] + rise * t,
     ];
-    B.tube("tube", "alu", at(-1), at(1), 0.012);
+    B.tube(FIXED.alu, at(-1), at(1), 0.012);
   }
 }
 
@@ -161,7 +190,7 @@ function stairParts(B, c) {
   const { dx, dy, run, px, py } = across(c, w);
   for (const s of [-1, 1]) {
     const off = (p) => [p[0] + s * px, p[1] + s * py, p[2]];
-    B.box("alu", off(c.a), off(c.b), 0.03, 0.18);
+    B.box(FIXED.alu, off(c.a), off(c.b), 0.03, 0.18);
   }
   const rise = c.b[2] - c.a[2];
   const steps = Math.max(2, Math.round(rise / 0.2));
@@ -175,7 +204,7 @@ function stairParts(B, c) {
       c.a[2] + (rise * k) / steps - 0.02,
     ];
     B.box(
-      "alu",
+      FIXED.alu,
       [p[0] - ux * 0.12, p[1] - uy * 0.12, p[2]],
       [p[0] + ux * 0.12, p[1] + uy * 0.12, p[2]],
       w - 0.04,
@@ -184,7 +213,9 @@ function stairParts(B, c) {
   }
 }
 
-function standardRings(B, c) {
+function standardParts(B, c) {
+  const len = Math.round((c.b[2] - c.a[2]) * 100) / 100;
+  B.tube(STANDARD_COLORS[len] ?? FIXED.spigot, c.a, c.b, 0.024);
   const pitch = c.rings ?? 0.5;
   const z0 = Math.min(c.a[2], c.b[2]);
   const z1 = Math.max(c.a[2], c.b[2]);
@@ -193,70 +224,87 @@ function standardRings(B, c) {
     z < z1 - 0.05;
     z += pitch
   ) {
-    B.disc("ring", [c.a[0], c.a[1], z], 0.062, 0.012);
+    B.disc(FIXED.ring, [c.a[0], c.a[1], z], 0.062, 0.014);
+  }
+  B.tube(FIXED.spigot, [c.a[0], c.a[1], z1], [c.a[0], c.a[1], z1 + 0.1], 0.019);
+}
+
+function wedgeHeads(B, c) {
+  const { dx, dy, run } = across(c, 0);
+  const dz = c.b[2] - c.a[2];
+  const len = Math.hypot(run, dz) || 1;
+  const k = 0.05 / len;
+  for (const [p, s] of [
+    [c.a, 1],
+    [c.b, -1],
+  ]) {
+    const q = [p[0] + dx * k * s, p[1] + dy * k * s, p[2] + dz * k * s];
+    B.box(FIXED.wedge, p, q, 0.05, 0.05);
   }
 }
 
-function addComponent(B, c) {
+function addComponent(B, c, ledgerColor) {
   switch (c.kind) {
     case "standard":
-      B.tube("tube", "steel", c.a, c.b, 0.024);
-      standardRings(B, c);
+      standardParts(B, c);
       return;
     case "basejack":
-      B.tube("tube", "jack", c.a, c.b, 0.018);
+      B.tube(FIXED.jack, c.a, c.b, 0.017);
       B.box(
-        "jack",
+        FIXED.plate,
         [c.a[0] - 0.075, c.a[1], c.a[2] + 0.005],
         [c.a[0] + 0.075, c.a[1], c.a[2] + 0.005],
         0.15,
-        0.01,
+        0.012,
       );
       return;
     case "basecollar":
-      B.tube("tube", "steel", c.a, c.b, 0.03);
+      B.tube(FIXED.spigot, c.a, c.b, 0.029);
       return;
     case "soleboard":
       B.box(
-        "timber",
-        [c.a[0] - 0.25, c.a[1], c.a[2] - 0.02],
-        [c.a[0] + 0.25, c.a[1], c.a[2] - 0.02],
-        0.225,
-        0.04,
+        FIXED.sole,
+        [c.a[0] - 0.13, c.a[1], c.a[2] - 0.02],
+        [c.a[0] + 0.13, c.a[1], c.a[2] - 0.02],
+        0.26,
+        0.035,
       );
       return;
-    case "ledger":
-      B.tube("tube", c.rail ? "rail" : "steel", c.a, c.b, 0.024);
+    case "ledger": {
+      const len = Math.hypot(c.b[0] - c.a[0], c.b[1] - c.a[1]);
+      B.tube(c.rail ? FIXED.rail : ledgerColor(len), c.a, c.b, 0.024);
+      wedgeHeads(B, c);
       return;
+    }
     case "transom":
-      if (c.profile === "u") B.box("steel", c.a, c.b, 0.05, 0.06, -0.03);
-      else B.tube("tube", c.rail ? "rail" : "steel", c.a, c.b, 0.024);
+      if (c.profile === "u") B.box(FIXED.transom, c.a, c.b, 0.05, 0.06, -0.03);
+      else B.tube(FIXED.transom, c.a, c.b, 0.024);
+      wedgeHeads(B, c);
       return;
     case "brace":
-      B.tube("tube", "brace", c.a, c.b, 0.02);
+      B.tube(FIXED.brace, c.a, c.b, 0.02);
       return;
     case "plank":
-      B.box("deck", c.a, c.b, c.w ?? 0.3, 0.045, 0.022);
+      B.box(FIXED.deck, c.a, c.b, c.w ?? 0.3, 0.045, 0.022);
       return;
     case "hatch":
-      B.box("hatch", c.a, c.b, c.w ?? 0.6, 0.05, 0.025);
+      B.box(FIXED.hatch, c.a, c.b, c.w ?? 0.6, 0.05, 0.025);
       return;
     case "toeboard":
       B.box(
-        "timber",
+        FIXED.toe,
         c.a,
         c.b,
-        0.03,
+        0.012,
         0.15,
         0.075,
-        c.face === "in" ? 0.02 : -0.02,
+        c.face === "in" ? 0.03 : -0.03,
       );
       return;
     case "bracket":
-      B.box("steel", c.a, c.b, 0.05, 0.06, -0.03);
+      B.box(FIXED.bracket, c.a, c.b, 0.05, 0.06, -0.03);
       B.tube(
-        "tube",
-        "steel",
+        FIXED.bracket,
         [c.a[0], c.a[1], c.a[2] - 0.45],
         [c.b[0], c.b[1], c.b[2] - 0.05],
         0.016,
@@ -270,52 +318,29 @@ function addComponent(B, c) {
       ladderParts(B, c);
       return;
     case "tietube":
-      B.tube("tube", "tie", c.a, c.b, 0.024);
+      B.tube(FIXED.tie, c.a, c.b, 0.024);
       return;
     default:
   }
 }
 
-const METALLIC = new Set([
-  "steel",
-  "rail",
-  "ring",
-  "brace",
-  "tie",
-  "jack",
-  "alu",
-]);
-
-function palette(el) {
-  return {
-    steel: cssColor(el, "--steel", "#4f6478"),
-    rail: cssColor(el, "--rail", "#4f6478"),
-    ring: cssColor(el, "--steel", "#4f6478"),
-    jack: cssColor(el, "--muted", "#5b6877"),
-    brace: cssColor(el, "--brace", "#2f6f9f"),
-    tie: cssColor(el, "--tie", "#8a3b8f"),
-    deck: cssColor(el, "--deck", "#c9a227"),
-    hatch: cssColor(el, "--accent", "#d9822b"),
-    timber: cssColor(el, "--timber", "#a0703a"),
-    alu: cssColor(el, "--alu", "#b8c2cc"),
-  };
+function ledgerColorFor(built) {
+  const index = bayColorIndex(built.system);
+  return (len) => PRINT_INK.bays[index(Math.round(len * 100) / 100)];
 }
 
-function buildMeshes(THREE, built, colors) {
+function buildMeshes(THREE, built) {
   const B = makeBatcher(THREE);
-  for (const c of built.components) if (c.a) addComponent(B, c);
+  const ledgerColor = ledgerColorFor(built);
+  for (const c of built.components) if (c.a) addComponent(B, c, ledgerColor);
   const geos = {
-    tube: new THREE.CylinderGeometry(1, 1, 1, 8),
+    tube: new THREE.CylinderGeometry(1, 1, 1, 10),
     box: new THREE.BoxGeometry(1, 1, 1),
-    disc: new THREE.CylinderGeometry(1, 1, 1, 12),
+    disc: new THREE.CylinderGeometry(1, 1, 1, 14),
   };
   const group = new THREE.Group();
   for (const g of B.groups.values()) {
-    const mat = new THREE.MeshStandardMaterial({
-      color: colors[g.colorKey] ?? "#888888",
-      metalness: METALLIC.has(g.colorKey) ? 0.45 : 0.05,
-      roughness: 0.55,
-    });
+    const mat = new THREE.MeshLambertMaterial({ color: g.color });
     const mesh = new THREE.InstancedMesh(
       geos[g.geoKey],
       mat,
@@ -327,23 +352,49 @@ function buildMeshes(THREE, built, colors) {
   return group;
 }
 
-function addWalls(THREE, group, built, color) {
-  const mat = new THREE.MeshStandardMaterial({
-    color,
-    transparent: true,
-    opacity: 0.35,
-    side: THREE.DoubleSide,
-  });
+function addFootprint(THREE, group, built) {
+  const pts = [];
   for (const r of built.runs) {
-    const a = r.place.start;
-    const b = r.place.end;
-    const len = Math.hypot(b[0] - a[0], b[1] - a[1]);
-    const h = r.run.height;
-    const mesh = new THREE.Mesh(new THREE.PlaneGeometry(len, h), mat);
-    mesh.position.set((a[0] + b[0]) / 2, h / 2, (a[1] + b[1]) / 2);
-    mesh.rotation.y = -Math.atan2(b[1] - a[1], b[0] - a[0]);
-    group.add(mesh);
+    pts.push(new THREE.Vector3(r.place.start[0], 0.002, r.place.start[1]));
+    pts.push(new THREE.Vector3(r.place.end[0], 0.002, r.place.end[1]));
   }
+  const geo = new THREE.BufferGeometry().setFromPoints(pts);
+  group.add(
+    new THREE.LineSegments(
+      geo,
+      new THREE.LineBasicMaterial({ color: FIXED.footprint }),
+    ),
+  );
+}
+
+export function legend3d(built) {
+  const std = new Set();
+  const ledgers = new Set();
+  for (const c of built.components) {
+    if (c.kind === "standard")
+      std.add(Math.round((c.b[2] - c.a[2]) * 100) / 100);
+    if (c.kind === "ledger" && !c.rail) {
+      ledgers.add(
+        Math.round(Math.hypot(c.b[0] - c.a[0], c.b[1] - c.a[1]) * 100) / 100,
+      );
+    }
+  }
+  const ledgerColor = ledgerColorFor(built);
+  const chip = (color, label) =>
+    `<span><i style="background:${color}"></i>${label}</span>`;
+  const stdChips = [...std]
+    .sort((a, b) => a - b)
+    .map((l) => chip(STANDARD_COLORS[l] ?? FIXED.spigot, `${l.toFixed(1)} m`))
+    .join("");
+  const ledChips = [...ledgers]
+    .sort((a, b) => a - b)
+    .map((l) => chip(ledgerColor(l), `${l.toFixed(2)} m`))
+    .join("");
+  return `<div class="legend3d">
+    <div><b>Standards</b>${stdChips}</div>
+    <div><b>Ledgers</b>${ledChips}</div>
+    <div><b>Other</b>${chip(FIXED.rail, "Guardrails, transoms")}${chip(FIXED.brace, "Diagonals")}${chip(FIXED.deck, "Steel decks")}${chip(FIXED.hatch, "Ladder hatch")}${chip(FIXED.jack, "Base jacks")}</div>
+  </div>`;
 }
 
 export async function mount3d(container, built) {
@@ -353,40 +404,45 @@ export async function mount3d(container, built) {
   container.replaceChildren(renderer.domElement);
   renderer.domElement.style.touchAction = "none";
   const scene = new THREE.Scene();
-  const camera = new THREE.PerspectiveCamera(45, 1, 0.05, 1000);
+  scene.background = new THREE.Color("#ffffff");
+  const camera = new THREE.OrthographicCamera(-10, 10, 10, -10, -500, 1000);
   const target = new THREE.Vector3();
   const render = () => renderer.render(scene, camera);
   const controls = orbit(camera, renderer.domElement, target, render);
-  scene.add(new THREE.HemisphereLight(0xffffff, 0x445566, 1.6));
-  const sun = new THREE.DirectionalLight(0xffffff, 1.4);
-  sun.position.set(20, 40, 10);
+  scene.add(new THREE.AmbientLight(0xffffff, 1.3));
+  const sun = new THREE.DirectionalLight(0xffffff, 1.6);
+  sun.position.set(-20, 40, 25);
   scene.add(sun);
   let group = new THREE.Group();
+  let span = 20;
   scene.add(group);
-  const resize = () => {
+  const frame = () => {
     const { width, height } = container.getBoundingClientRect();
-    renderer.setSize(width, height, false);
-    camera.aspect = width / Math.max(1, height);
+    const aspect = width / Math.max(1, height);
+    camera.left = (-span * aspect) / 2;
+    camera.right = (span * aspect) / 2;
+    camera.top = span / 2;
+    camera.bottom = -span / 2;
     camera.updateProjectionMatrix();
+    return { width, height };
+  };
+  const resize = () => {
+    const { width, height } = frame();
+    renderer.setSize(width, height, false);
     render();
   };
   const update = (next) => {
     scene.remove(group);
-    scene.background = new THREE.Color(
-      cssColor(container, "--canvas", "#e6ebef"),
-    );
-    group = buildMeshes(THREE, next, palette(container));
-    addWalls(THREE, group, next, cssColor(container, "--wall3d", "#b5c0ca"));
+    group = buildMeshes(THREE, next);
+    addFootprint(THREE, group, next);
     const box = new THREE.Box3().setFromObject(group);
-    const grid = new THREE.GridHelper(80, 80, 0x8899aa, 0x8899aa);
-    grid.material.opacity = 0.12;
-    grid.material.transparent = true;
-    group.add(grid);
     scene.add(group);
     if (!box.isEmpty()) {
       box.getCenter(target);
-      controls.state.radius = box.getSize(new THREE.Vector3()).length() * 1.1;
+      span = box.getSize(new THREE.Vector3()).length() * 0.75;
     }
+    camera.zoom = 1;
+    frame();
     controls.apply();
   };
   new ResizeObserver(resize).observe(container);

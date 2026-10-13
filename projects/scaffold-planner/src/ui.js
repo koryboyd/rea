@@ -42,9 +42,3 @@ export function stepper({ id, attrs, value, step, min = 0, label }) {
     <button type="button" class="step" data-step="${step}" data-for="${id}" aria-label="More ${esc(label)}">+</button>
   </div>`;
 }
-
-export function legend() {
-  const item = (v, l) =>
-    `<span><i style="background:var(${v})"></i>${l}</span>`;
-  return `<div class="legend">${item("--steel", "Standards, ledgers, rails")}${item("--deck", "Working deck")}${item("--accent", "Ladder access bay")}${item("--brace", "Face brace")}${item("--tie", "Tie")}</div>`;
-}

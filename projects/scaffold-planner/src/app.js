@@ -14,7 +14,7 @@ import {
 import { jobLoads } from "./loads.js";
 import { quoteJob } from "./quote.js";
 import { openStore } from "./store.js";
-import { STATUS_TEXT, esc, legend, money } from "./ui.js";
+import { STATUS_TEXT, esc, money } from "./ui.js";
 import { TOOLS, VIEWS } from "./views.js";
 
 const $ = (sel) => document.querySelector(sel);
@@ -112,13 +112,16 @@ async function show3d() {
   const pane = $("#pane-view");
   if (state.view3d && $("#view3d")) {
     state.view3d.update(state.built);
+    $("#legend3d").innerHTML = state.legend3d?.(state.built) ?? "";
     return;
   }
-  pane.innerHTML = `<div class="panel"><div class="panel-head"><h2>3D</h2><span class="note">Drag to turn · pinch to zoom</span></div><div id="view3d"><p class="note" style="padding:16px">Loading 3D view…</p></div>${legend()}</div>`;
+  pane.innerHTML = `<div class="panel"><div class="panel-head"><h2>3D</h2><span class="note">Drag to turn · pinch to zoom</span></div><div id="view3d"><p class="note" style="padding:16px">Loading 3D view…</p></div><div id="legend3d"></div></div>`;
   try {
-    const { mount3d } = await import("./view3d.js");
+    const { mount3d, legend3d } = await import("./view3d.js");
     if (state.tab !== "3d") return;
     state.view3d = await mount3d($("#view3d"), state.built);
+    state.legend3d = legend3d;
+    $("#legend3d").innerHTML = legend3d(state.built);
   } catch {
     $("#view3d").innerHTML =
       '<p class="note warn" style="padding:16px">The 3D viewer could not load. Check your connection and open this tab again.</p>';
@@ -161,8 +164,11 @@ function update({ structural = false, persist = true } = {}) {
   if (structural) renderEdit();
   else refreshEditor();
   renderStrip();
-  if (state.tab === "3d" && state.view3d) state.view3d.update(state.built);
-  else if (state.tab !== "edit") rerenderViewKeepingFocus();
+  if (state.tab === "3d" && state.view3d) {
+    state.view3d.update(state.built);
+    const legendEl = $("#legend3d");
+    if (legendEl) legendEl.innerHTML = state.legend3d?.(state.built) ?? "";
+  } else if (state.tab !== "edit") rerenderViewKeepingFocus();
   if (persist) scheduleSave();
 }
 

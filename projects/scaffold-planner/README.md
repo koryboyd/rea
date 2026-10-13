@@ -23,7 +23,12 @@ indicative leg-load check.
 ## How the scaffold is built
 
 Every component is placed in 3D, and the parts list counts those placements,
-so the 3D view and the parts list always match.
+so the 3D view and the parts list always match. The 3D view uses a CAD look
+modelled on iScaf: white ground, isometric (orthographic) camera, standards
+coloured by length, ledgers coloured by bay length (matching the plan), navy
+guardrails and transoms, maroon diagonals, grey steel decks, black hatch
+decks, red base jacks, rosettes, wedge heads and spigots, and the house
+footprint on the ground. A key under the view lists the colours in use.
 
 - **Outside corners**: the side reaching the corner gets a square corner bay
   (width × width) and the next side starts from it, sharing its standards.
@@ -55,7 +60,8 @@ so the 3D view and the parts list always match.
 
 - **Scafom Ringscaff** (default): 0.73 / 1.09 / 1.40 m widths and 0.73–3.07 m
   bays (LA 07 dimension). Part numbers, weights and list prices come from the
-  Scafom-rux RINGSCAFF price list 06/2019. U-ledgers carry the decks, tubular
+  Scafom-rux RINGSCAFF price list 06/2019. Toe boards are steel (LA 07
+  steel toe boards). U-ledgers carry the decks, tubular
   ledgers fill the other lifts and end guardrails, and ladder bays use the
   2.57 / 3.07 m hatch deck with integrated ladder.
 - **Cuplok**: 0.8 / 1.3 m widths and 0.8–2.5 m bays (example figures).
