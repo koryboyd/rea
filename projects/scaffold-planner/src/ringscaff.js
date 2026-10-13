@@ -81,6 +81,22 @@ const braces = [
   [3.07, 9.8, "E04RS0333", 44.7, 1.0],
 ].map(row("brace", braceName));
 
+// Short 0.73 m diagonals confirmed in use but not in the 2019 price list.
+// Part numbers are placeholders and weights are estimated from the 1.09 m
+// sizes until the Scafom figures are entered.
+const shortBraces = [
+  [1.5, 6.5, 0.65],
+  [1.0, 4.6, 0.6],
+].map(([height, weight, hire]) => ({
+  code: `RS-DIAG-0.73x${height.toFixed(2)}`,
+  name: `${braceName(0.73, height)} (part no. not in 2019 price list)`,
+  kind: "brace",
+  length: 0.73,
+  height,
+  weight,
+  hire,
+}));
+
 const toeboards = [
   [0.73, 2.8, "E04RS0016", 13.0],
   [1.09, 3.9, "E04RS0037", 13.8],
@@ -175,6 +191,7 @@ export const RINGSCAFF = {
     ...transoms,
     ...decks,
     ...braces,
+    ...shortBraces,
     ...toeboards,
     ...base,
     ...hatches,

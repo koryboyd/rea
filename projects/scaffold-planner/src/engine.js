@@ -531,6 +531,14 @@ function cornerBay(f, ctx, uE, levels, pieces) {
     f.bar("ledger", W, [uE, vout, z], [uE + W, vout, z]);
   }
   const offset = (W - boards * plankW) / 2;
+  levels.intervals.forEach(({ z0, z1, h }, k) => {
+    if (h < 0.75) return;
+    const flip = k % 2 === 0;
+    const [a, b] = flip ? [uE, uE + W] : [uE + W, uE];
+    const [c, d] = flip ? [vin, vout] : [vout, vin];
+    f.bar("brace", W, [a, vout, z0], [b, vout, z1], { corner: true }, h);
+    f.bar("brace", W, [uE + W, c, z0], [uE + W, d, z1], { corner: true }, h);
+  });
   for (const d of levels.deckLevels) {
     for (const dz of [0.5, 1.0]) {
       f.bar("ledger", W, [uE, vout, d + dz], [uE + W, vout, d + dz], {

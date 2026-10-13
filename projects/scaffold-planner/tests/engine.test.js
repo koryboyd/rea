@@ -239,3 +239,26 @@ test("braces go in every 2nd bay plus both end bays of each side", async () => {
   expected.add(r.bays.length - 1);
   assert.deepEqual([...braced].sort(), [...expected].sort());
 });
+
+test("every corner bay is braced on both outside faces each lift", () => {
+  const built = buildJob(exampleJob());
+  const lifts = built.runs[0].levels.intervals.filter(
+    (x) => x.h >= 0.75,
+  ).length;
+  const cornerBraces = built.components.filter(
+    (c) => c.kind === "brace" && c.corner,
+  );
+  assert.equal(cornerBraces.length, built.corners * 2 * lifts);
+  assert.ok(cornerBraces.every((c) => c.code === "E04RS0038"));
+});
+
+test("0.73 m bays take the short 0.73 diagonals", () => {
+  const ring = getSystem("ringscaff");
+  for (const h of [1.0, 1.5, 2.0]) {
+    assert.ok(
+      ring.components.some(
+        (c) => c.kind === "brace" && c.length === 0.73 && c.height === h,
+      ),
+    );
+  }
+});
