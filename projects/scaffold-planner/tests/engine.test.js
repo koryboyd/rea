@@ -262,3 +262,38 @@ test("0.73 m bays take the short 0.73 diagonals", () => {
     );
   }
 });
+
+test("every diagonal rises the same way when viewed from outside", async () => {
+  const { withShape } = await import("../src/job.js");
+  const job = withShape(exampleJob(), {
+    type: "rect",
+    length: 12,
+    depth: 9,
+    height: 6.5,
+    decks: "top",
+    ladders: 1,
+    stairs: 1,
+  });
+  const built = buildJob(job);
+  const sense = (c) => {
+    const r = built.runs[c.run];
+    const lo = c.a[2] < c.b[2] ? c.a : c.b;
+    const hi = c.a[2] < c.b[2] ? c.b : c.a;
+    const along =
+      (hi[0] - lo[0]) * r.place.dir[0] + (hi[1] - lo[1]) * r.place.dir[1];
+    const out =
+      (hi[0] - lo[0]) * r.place.outward[0] +
+      (hi[1] - lo[1]) * r.place.outward[1];
+    return Math.abs(along) > 1e-6 ? Math.sign(along) : Math.sign(out);
+  };
+  const braces = built.components.filter((c) => c.kind === "brace");
+  const faceBraces = braces.filter(
+    (c) => !c.corner || Math.abs(c.local.a[0] - c.local.b[0]) > 1e-6,
+  );
+  assert.ok(faceBraces.length > 0);
+  assert.ok(faceBraces.every((c) => sense(c) === -1));
+  const sideFaces = braces.filter(
+    (c) => c.corner && Math.abs(c.local.a[0] - c.local.b[0]) < 1e-6,
+  );
+  assert.ok(sideFaces.every((c) => c.local.b[1] > c.local.a[1]));
+});

@@ -39,7 +39,8 @@ so the 3D view and the parts list always match.
   with a platform stair per 2.0 m lift, landing deck, guardrails and braces.
   The main guardrail is left open at the stair.
 - **Bracing**: a diagonal in every lift of every 2nd bay plus both end bays of
-  each side, alternating direction each lift. Every corner bay is braced on
+  each side. Every diagonal on every face, corner and stair tower rises the
+  same way (bottom-left to top-right from outside). Every corner bay is braced on
   both outside faces. Ringscaff 0.73 m bays use 0.73 × 1.0 / 1.5 / 2.0
   diagonals (the 1.0 and 1.5 part numbers are placeholders until entered).
 - **Checks**: gaps over 225 mm without hop-ups or inner guardrails, missing

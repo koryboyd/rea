@@ -425,19 +425,14 @@ function railsAndToes(f, ctx, b, isStair) {
   }
 }
 
+// Every diagonal rises the same way: from its bay's far end (u1) at the
+// lower ledger to its near end (u0) at the upper ledger, which reads
+// bottom-left to top-right from outside the scaffold.
 function faceBraces(f, levels, b, v) {
-  levels.intervals.forEach(({ z0, z1, h }, k) => {
-    if (h < 0.75) return;
-    const flip = k % 2 === 0;
-    f.bar(
-      "brace",
-      b.len,
-      [flip ? b.u0 : b.u1, v, z0],
-      [flip ? b.u1 : b.u0, v, z1],
-      {},
-      h,
-    );
-  });
+  for (const { z0, z1, h } of levels.intervals) {
+    if (h < 0.75) continue;
+    f.bar("brace", b.len, [b.u1, v, z0], [b.u0, v, z1], {}, h);
+  }
 }
 
 function bayComponents(f, ctx, b, i) {
@@ -531,14 +526,18 @@ function cornerBay(f, ctx, uE, levels, pieces) {
     f.bar("ledger", W, [uE, vout, z], [uE + W, vout, z]);
   }
   const offset = (W - boards * plankW) / 2;
-  levels.intervals.forEach(({ z0, z1, h }, k) => {
-    if (h < 0.75) return;
-    const flip = k % 2 === 0;
-    const [a, b] = flip ? [uE, uE + W] : [uE + W, uE];
-    const [c, d] = flip ? [vin, vout] : [vout, vin];
-    f.bar("brace", W, [a, vout, z0], [b, vout, z1], { corner: true }, h);
-    f.bar("brace", W, [uE + W, c, z0], [uE + W, d, z1], { corner: true }, h);
-  });
+  for (const { z0, z1, h } of levels.intervals) {
+    if (h < 0.75) continue;
+    f.bar("brace", W, [uE + W, vout, z0], [uE, vout, z1], { corner: true }, h);
+    f.bar(
+      "brace",
+      W,
+      [uE + W, vin, z0],
+      [uE + W, vout, z1],
+      { corner: true },
+      h,
+    );
+  }
   for (const d of levels.deckLevels) {
     for (const dz of [0.5, 1.0]) {
       f.bar("ledger", W, [uE, vout, d + dz], [uE + W, vout, d + dz], {
