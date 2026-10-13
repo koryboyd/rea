@@ -1,6 +1,6 @@
 import { DUTY_CLASSES, SYSTEMS, getSystem } from "./catalog.js";
 import { elevationSvg, planSvg } from "./drawing.js";
-import { STATUS_TEXT, esc, field, legend, money, opt, stepper } from "./ui.js";
+import { STATUS_TEXT, esc, field, money, opt, stepper } from "./ui.js";
 
 function planView(state) {
   const { built } = state;
@@ -9,8 +9,7 @@ function planView(state) {
   return `<div class="panel">
     <div class="panel-head"><h2>Plan</h2><button class="btn small primary" data-act="pdf">PDF</button></div>
     <div class="drawing">${planSvg(built)}</div>
-    ${legend()}
-    <p class="note">Tap a side to see its elevation.</p>
+    <p class="note">Each bay shows width × length and the working deck height. Colours match bay sizes. Tap a side to see its elevation.</p>
   </div>
   <div class="panel" id="elevation">
     <div class="panel-head"><h2>Elevation</h2>
@@ -121,20 +120,22 @@ function ratesView(state) {
     state.job.system,
     state.settings.overrides?.[state.job.system] ?? {},
   );
+  const hasList = sys.components.some((c) => c.listEur !== undefined);
   const rows = sys.components
     .map(
       (
         c,
       ) => `<tr><td>${esc(c.name)}<div class="sub mono">${esc(c.code)}</div></td>
       <td class="n"><input type="number" inputmode="decimal" step="0.1" id="rate-${esc(c.code)}-weight" data-rate="${esc(c.code)}" data-rf="weight" value="${c.weight}" aria-label="${esc(c.code)} weight"/></td>
+      ${hasList ? `<td class="n mono">${c.listEur === undefined ? "–" : c.listEur.toFixed(2)}</td>` : ""}
       <td class="n"><input type="number" inputmode="decimal" step="0.05" id="rate-${esc(c.code)}-hire" data-rate="${esc(c.code)}" data-rf="hire" value="${c.hire}" aria-label="${esc(c.code)} hire rate"/></td></tr>`,
     )
     .join("");
   return `<div class="panel">
     <div class="panel-head"><h2>Rates · ${esc(sys.name)}</h2><button class="btn small" data-act="reset-rates">Reset</button></div>
-    <p class="note warn">These start as example figures. Enter your Scafom and supplier weights and hire rates. Changes apply to every job using this system.</p>
+    ${sys.source ? `<p class="note">Part numbers, weights and list prices: ${esc(sys.source)}. Hire rates start at 2% of list price per week. Enter your own rates. Changes apply to every job using this system.</p>` : '<p class="note warn">These start as example figures. Enter your Scafom and supplier weights and hire rates. Changes apply to every job using this system.</p>'}
     <div class="tablewrap"><table>
-      <thead><tr><th>Component</th><th class="n">kg</th><th class="n">$/week</th></tr></thead>
+      <thead><tr><th>Component</th><th class="n">kg</th>${hasList ? '<th class="n">List €</th>' : ""}<th class="n">$/week</th></tr></thead>
       <tbody>${rows}</tbody>
     </table></div>
   </div>`;

@@ -1,3 +1,5 @@
+import { RINGSCAFF } from "./ringscaff.js";
+
 // Nominal component data. Lengths, weights and rates are placeholders until
 // they are replaced with the Scafom / supplier catalogue figures.
 
@@ -53,6 +55,7 @@ const generic = (prefix) => [
 ];
 
 export const SYSTEMS = {
+  ringscaff: RINGSCAFF,
   cuplok: {
     id: "cuplok",
     name: "Scafom Cuplok",
@@ -480,10 +483,19 @@ export function lengthsOf(system, kind) {
     .sort((a, b) => a - b);
 }
 
-export function findComponent(system, kind, length) {
+export const bayLengthsOf = (system) =>
+  system.bayLengths ?? lengthsOf(system, "ledger");
+
+export const hasKind = (system, kind) =>
+  system.components.some((c) => c.kind === kind);
+
+export function findComponent(system, kind, length, height) {
   return system.components.find(
     (c) =>
       c.kind === kind &&
-      (length === undefined || Math.abs(c.length - length) < 1e-6),
+      (length === undefined || Math.abs(c.length - length) < 1e-6) &&
+      (height === undefined ||
+        c.height === undefined ||
+        Math.abs(c.height - height) < 1e-6),
   );
 }

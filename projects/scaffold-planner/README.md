@@ -21,8 +21,18 @@ defaults that suit most jobs.
 
 ## Systems
 
-- **Scafom Cuplok**: 0.8 / 1.3 m widths and 0.8–2.5 m bays.
-- **Kwikstage**: 0.7 / 1.2 m widths and 0.7–2.4 m bays.
+- **Scafom Ringscaff** (default): 0.73 / 1.09 / 1.40 m widths and 0.73–3.07 m
+  bays (LA 07 dimension). Part numbers, weights and list prices come from the
+  Scafom-rux RINGSCAFF price list 06/2019. U-ledgers carry the decks, tubular
+  ledgers fill the other lifts and end guardrails, and ladder bays use the
+  2.57 / 3.07 m hatch deck with integrated ladder.
+- **Cuplok**: 0.8 / 1.3 m widths and 0.8–2.5 m bays (example figures).
+- **Kwikstage**: 0.7 / 1.2 m widths and 0.7–2.4 m bays (example figures).
+
+Working decks sit on the 0.5 m ring spacing: a 6.5 m deck gives lifts at
+6.5, 4.5 and 2.5 m with base ledgers at 0.5 m. The plan labels every bay with
+width × length (e.g. 1.09×2.57) and its deck height, colours each bay size
+differently and lists the bay count per size.
 
 Each job uses one system. Bay sizes, standards, transoms, planks, braces and
 toe boards come only from that system's catalogue, so the parts list never

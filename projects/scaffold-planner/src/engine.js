@@ -1,6 +1,12 @@
-import { findComponent, getSystem, lengthsOf } from "./catalog.js";
+import {
+  bayLengthsOf,
+  findComponent,
+  getSystem,
+  hasKind,
+  lengthsOf,
+} from "./catalog.js";
 
-const GRID = 0.05;
+const GRID = 0.01;
 const EPS = 1e-6;
 const toUnits = (m) => Math.round(m / GRID);
 const round2 = (n) => Math.round(n * 100) / 100;
@@ -53,10 +59,18 @@ export const solveBays = (length, ledgerLengths, maxBay) =>
 export const composeColumn = (height, standardLengths) =>
   combine(height, standardLengths, 10);
 
-function ladderBayIndexes(bayCount, ladderBays) {
-  const n = Math.min(ladderBays, bayCount);
+function ladderBayIndexes(bays, ladderBays, hatchLengths) {
+  const fits = (len) =>
+    hatchLengths.length === 0 ||
+    hatchLengths.some((h) => Math.abs(h - len) < EPS);
+  const candidates = bays
+    .map((len, i) => (fits(len) ? i : -1))
+    .filter((i) => i >= 0);
+  const pool = candidates.length > 0 ? candidates : bays.map((_, i) => i);
+  const n = Math.min(ladderBays, pool.length);
   const set = new Set();
-  for (let i = 0; i < n; i++) set.add(Math.floor(((i + 0.5) * bayCount) / n));
+  for (let i = 0; i < n; i++)
+    set.add(pool[Math.floor(((i + 0.5) * pool.length) / n)]);
   return set;
 }
 
@@ -76,35 +90,50 @@ function tiePositions(standardLines, everyBays) {
   return out;
 }
 
-function levelsFor(run, job, system) {
+export function levelsFor(run, job, system) {
   const lift = job.liftHeight;
-  const lifts = Math.max(1, Math.ceil(run.height / lift - EPS));
-  const topDeck = round2(lifts * lift);
-  const deckLevels =
-    run.decks === "all"
-      ? Array.from({ length: lifts }, (_, i) => round2((i + 1) * lift))
-      : [topDeck];
-  const ledgerLevels = [
-    system.nodePitch,
-    ...Array.from({ length: lifts }, (_, i) => round2((i + 1) * lift)),
-  ];
+  const pitch = system.nodePitch;
+  const topDeck = round2(
+    Math.max(2 * pitch, Math.ceil(run.height / pitch - EPS) * pitch),
+  );
+  const liftLevels = [];
+  for (let z = topDeck; z > pitch + EPS; z -= lift)
+    liftLevels.unshift(round2(z));
+  const lifts = liftLevels.length;
+  const deckLevels = run.decks === "all" ? liftLevels : [topDeck];
+  const ledgerLevels = [pitch, ...liftLevels];
   const tieLevels = [];
   if (job.tieVertical > 0) {
     for (let z = job.tieVertical; z <= topDeck + EPS; z += job.tieVertical) {
       tieLevels.push(round2(z));
     }
   }
-  return { lifts, topDeck, deckLevels, ledgerLevels, tieLevels };
+  const intervals = ledgerLevels.slice(1).map((z, i) => ({
+    z0: i === 0 ? 0 : ledgerLevels[i],
+    z1: z,
+    h: round2(z - ledgerLevels[i]),
+  }));
+  return {
+    lifts,
+    topDeck,
+    liftLevels,
+    deckLevels,
+    ledgerLevels,
+    intervals,
+    tieLevels,
+  };
 }
 
 function makeTally(system) {
   const items = new Map();
   const missing = new Set();
-  const add = (kind, length, qty) => {
+  const add = (kind, length, qty, height) => {
     if (qty <= 0) return;
-    const c = findComponent(system, kind, length);
+    const c = findComponent(system, kind, length, height);
     if (!c) {
-      missing.add(length === undefined ? kind : `${kind} ${length} m`);
+      const size =
+        height === undefined ? `${length} m` : `${length} x ${height} m`;
+      missing.add(length === undefined ? kind : `${kind} ${size}`);
       return;
     }
     items.set(c.code, (items.get(c.code) ?? 0) + qty);
@@ -119,22 +148,37 @@ function tallyRun(geo, run, job, system, widthSpec) {
   const decks = levels.deckLevels.length;
   const railFaces = job.innerGuardrail ? 2 : 1;
 
+  const levelsN = levels.ledgerLevels.length;
+  const sized = (kind) =>
+    system.components.some((c) => c.kind === kind && c.length > 0);
   for (const piece of standardPieces) add("standard", piece, lines * 2);
   add("basejack", undefined, lines * 2);
+  if (hasKind(system, "basecollar")) add("basecollar", undefined, lines * 2);
   add("soleboard", undefined, lines * 2);
-  add("transom", job.width, lines * levels.ledgerLevels.length + decks * 4);
+  if (system.bareTransom) {
+    add("transom", job.width, lines * decks);
+    add(system.bareTransom, job.width, lines * (levelsN - decks) + decks * 4);
+  } else {
+    add("transom", job.width, lines * levelsN + decks * 4);
+  }
   add("toeboard", job.width, decks * 2);
 
   bays.forEach((len, i) => {
-    add("ledger", len, 2 * levels.ledgerLevels.length + 2 * railFaces * decks);
-    const hatch = ladderBays.has(i);
-    add("plank", len, decks * (widthSpec.boards - (hatch ? 2 : 0)));
+    add("ledger", len, 2 * levelsN + 2 * railFaces * decks);
     add("toeboard", len, decks * railFaces);
-    if (hatch) {
-      add("hatch", undefined, decks);
-      add("ladder", undefined, levels.lifts);
+    if (ladderBays.has(i)) {
+      const boarded = levels.lifts;
+      add("plank", len, boarded * Math.max(0, widthSpec.boards - 2));
+      add("hatch", sized("hatch") ? len : undefined, boarded);
+      if (!system.integratedLadder) add("ladder", undefined, levels.lifts);
+    } else {
+      add("plank", len, decks * widthSpec.boards);
     }
-    if (bracedBays.has(i)) add("brace", len, levels.lifts);
+    if (bracedBays.has(i)) {
+      for (const { h } of levels.intervals) {
+        if (h >= 0.75) add("brace", len, 1, h);
+      }
+    }
   });
 
   const tieCount = ties.length * levels.tieLevels.length;
@@ -169,24 +213,16 @@ function membersFor(geo, job) {
       bar("rail", [u0, vOut, z], [u1, vOut, z]);
       if (job.innerGuardrail) bar("rail", [u0, vIn, z], [u1, vIn, z]);
     }
-    for (const d of levels.deckLevels) {
-      members.push({
-        type: "deck",
-        u0,
-        u1,
-        v0: vIn,
-        v1: vOut,
-        z: d,
-        hatch: geo.ladderBays.has(i),
-      });
+    const hatch = geo.ladderBays.has(i);
+    for (const d of hatch ? levels.liftLevels : levels.deckLevels) {
+      members.push({ type: "deck", u0, u1, v0: vIn, v1: vOut, z: d, hatch });
     }
     if (bracedBays.has(i)) {
-      for (let k = 0; k < levels.lifts; k++) {
-        const z0 = k === 0 ? 0 : levels.ledgerLevels[k];
-        const z1 = levels.ledgerLevels[k + 1];
+      levels.intervals.forEach(({ z0, z1, h }, k) => {
+        if (h < 0.75) return;
         const flip = k % 2 === 0;
         bar("brace", [flip ? u0 : u1, vOut, z0], [flip ? u1 : u0, vOut, z1]);
-      }
+      });
     }
   });
   for (const d of levels.deckLevels) {
@@ -208,7 +244,7 @@ export function buildRun(run, job, system) {
   );
   if (!widthSpec)
     throw new Error(`Width ${job.width} m is not available for ${system.name}`);
-  const bays = solveBays(run.length, lengthsOf(system, "ledger"), job.maxBay);
+  const bays = solveBays(run.length, bayLengthsOf(system), job.maxBay);
   const levels = levelsFor(run, job, system);
   const standardPieces = composeColumn(
     levels.topDeck + 1.0,
@@ -218,7 +254,11 @@ export function buildRun(run, job, system) {
     bays,
     levels,
     standardPieces,
-    ladderBays: ladderBayIndexes(bays.length, run.ladderBays ?? 0),
+    ladderBays: ladderBayIndexes(
+      bays,
+      run.ladderBays ?? 0,
+      lengthsOf(system, "hatch").filter((l) => l > 0),
+    ),
     bracedBays: bracedBayIndexes(bays.length, job.braceEvery),
     ties: tiePositions(bays.length + 1, job.tieEveryBays),
   };
@@ -269,6 +309,7 @@ export function partsList(items, system) {
     "brace",
     "toeboard",
     "basejack",
+    "basecollar",
     "soleboard",
     "ladder",
     "hatch",
@@ -283,7 +324,9 @@ export function partsList(items, system) {
     })
     .sort(
       (a, b) =>
-        order.indexOf(a.kind) - order.indexOf(b.kind) || a.length - b.length,
+        order.indexOf(a.kind) - order.indexOf(b.kind) ||
+        a.length - b.length ||
+        (b.height ?? 0) - (a.height ?? 0),
     );
 }
 

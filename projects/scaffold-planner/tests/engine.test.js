@@ -35,18 +35,45 @@ test("standard columns reach top deck plus 1 m handrail", () => {
   assert.deepEqual(combine(0.3, [0.5], 1), [0.5]);
 });
 
-test("example job counts standards, jacks and planks", () => {
-  const built = buildJob(exampleJob());
+test("cuplok job counts standards, jacks and planks", async () => {
+  const { withShape } = await import("../src/job.js");
+  const job = withShape(
+    conformToSystem({
+      ...exampleJob(),
+      system: "cuplok",
+      width: 1.3,
+      maxBay: 2.5,
+    }),
+    { type: "rect", length: 12, depth: 9, height: 6, decks: "top", ladders: 1 },
+  );
+  const built = buildJob(job);
   const qty = (code) => built.parts.find((p) => p.code === code)?.qty ?? 0;
   const lines = built.runs.reduce((a, r) => a + r.bays.length + 1, 0);
   assert.equal(qty("C-BJ600"), lines * 2);
-  assert.equal(built.runs[0].levels.topDeck, 6);
-  assert.equal(built.runs[0].levels.lifts, 3);
   const front = built.runs[0];
+  assert.equal(front.levels.topDeck, 6);
+  assert.equal(front.levels.lifts, 3);
   assert.deepEqual(front.bays, [2.5, 2.5, 2.5, 2.5, 2.5]);
-  assert.equal(front.items.get("C-HATCH"), 1);
-  assert.equal(front.items.get("CP-2.5"), 5 * 5 - 2);
+  assert.equal(front.items.get("C-HATCH"), 3);
+  assert.equal(front.items.get("CP-2.5"), 4 * 5 + 3 * 3);
   assert.equal(built.missing.length, 0);
+});
+
+test("ringscaff 6.5 m deck uses 0.5 m rings and Scafom parts", () => {
+  const job = exampleJob();
+  const built = buildJob(job);
+  const front = built.runs[0];
+  assert.equal(job.system, "ringscaff");
+  assert.equal(front.levels.topDeck, 6.5);
+  assert.deepEqual(front.levels.ledgerLevels, [0.5, 2.5, 4.5, 6.5]);
+  assert.deepEqual(front.bays, [2.57, 2.57, 2.57, 2.57, 2.07]);
+  assert.equal(built.missing.length, 0);
+  const qty = (code) => built.parts.find((p) => p.code === code)?.qty ?? 0;
+  assert.equal(qty("E04RS0467"), 3);
+  assert.equal(qty("08358"), qty("E04RS0002"));
+  assert.ok(qty("E04RS0379") > 0);
+  const ring = getSystem("ringscaff").components.map((c) => c.code);
+  assert.ok(built.parts.every((p) => ring.includes(p.code)));
 });
 
 test("loads flag over-capacity legs only when an allowable is given", () => {

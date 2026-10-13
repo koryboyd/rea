@@ -1,4 +1,4 @@
-import { DUTY_CLASSES, SYSTEMS, lengthsOf } from "./catalog.js";
+import { DUTY_CLASSES, SYSTEMS, bayLengthsOf } from "./catalog.js";
 import { planSvg } from "./drawing.js";
 import { SHAPES, usesDepth } from "./job.js";
 import { esc, field, metres, opt, seg, stepper } from "./ui.js";
@@ -84,7 +84,7 @@ function systemInputs(job) {
   const sys = SYSTEMS[job.system];
   return `<div class="grid2">
     ${field("System", seg({ scope: "job", key: "system", current: job.system, label: "System", options: Object.values(SYSTEMS).map((s) => ({ value: s.id, label: s.name.replace("Scafom ", "") })) }), "span-all")}
-    ${field("Width", seg({ scope: "job", key: "width", current: job.width, label: "Width", options: sys.widths.map((w) => ({ value: w.width, label: `${w.width} m` })) }))}
+    ${field("Width (m)", seg({ scope: "job", key: "width", current: job.width, label: "Width", options: sys.widths.map((w) => ({ value: w.width, label: w.width.toFixed(2) })) }))}
     ${field("Lift", seg({ scope: "job", key: "liftHeight", current: job.liftHeight, label: "Lift height", options: sys.liftHeights.map((l) => ({ value: l, label: `${l.toFixed(1)} m` })) }))}
   </div>`;
 }
@@ -172,7 +172,7 @@ function sidesPanel(state) {
 }
 
 function morePanel(job, open) {
-  const ledgers = lengthsOf(SYSTEMS[job.system], "ledger");
+  const ledgers = bayLengthsOf(SYSTEMS[job.system]);
   const n = (key, label, step, hint = "") =>
     field(
       label,
