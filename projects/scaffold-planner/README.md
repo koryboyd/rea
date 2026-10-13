@@ -4,6 +4,21 @@ A web app for planning system scaffolds. It works on a phone or a PC and
 produces the plan, elevations, a 3D model, the parts list, a quote and an
 indicative leg-load check.
 
+## Using it
+
+1. **Job**: name, client, site.
+2. **Scaffold**: tap the system, width and lift, then what you are
+   scaffolding (one wall, L shape, three sides or all round). Set length,
+   depth and work height with the − / + buttons. The sides, bays and a plan
+   preview update as you go.
+3. Odd walls or different heights: tap **Edit each side** to set every side
+   yourself.
+4. **Plan**, **3D**, **Parts**, **Quote** show the results. **PDF** at the top
+   exports the plan, elevations, parts list and quote in one file.
+
+Bracing, ties, duty class and bay size sit under **More settings** with
+defaults that suit most jobs.
+
 ## Systems
 
 - **Scafom Cuplok**: 0.8 / 1.3 m widths and 0.8–2.5 m bays.
@@ -63,4 +78,8 @@ the page's shared store, so everyone with edit access sees the same jobs.
 | `src/view3d.js`  | 3D view (three.js)                                                      |
 | `src/export.js`  | PDF and CSV export                                                      |
 | `src/store.js`   | Saved jobs and rates                                                    |
-| `src/app.js`     | Screens and input handling                                              |
+| `src/job.js`     | Job defaults and shape presets                                          |
+| `src/editor.js`  | Job and scaffold input screen                                           |
+| `src/views.js`   | Plan, parts, quote, loads, rates and saved-job screens                  |
+| `src/ui.js`      | Shared controls (buttons, steppers, formatting)                         |
+| `src/app.js`     | State, saving and input handling                                        |

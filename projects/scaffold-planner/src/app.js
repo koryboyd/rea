@@ -1,42 +1,44 @@
-import { DUTY_CLASSES, SYSTEMS, getSystem, lengthsOf } from "./catalog.js";
-import { elevationSvg, planSvg } from "./drawing.js";
+import { SYSTEMS } from "./catalog.js";
+import { planSvg } from "./drawing.js";
+import { editorHtml, runMeta, sideSummary } from "./editor.js";
 import { buildJob } from "./engine.js";
 import { partsCsv, planPdf, saveFile, slug } from "./export.js";
-import { conformToSystem, exampleJob, newId, newRun } from "./job.js";
+import {
+  blankJob,
+  conformToSystem,
+  exampleJob,
+  newId,
+  newRun,
+  withShape,
+} from "./job.js";
 import { jobLoads } from "./loads.js";
 import { quoteJob } from "./quote.js";
 import { openStore } from "./store.js";
+import { STATUS_TEXT, esc, legend, money } from "./ui.js";
+import { VIEWS } from "./views.js";
 
 const $ = (sel) => document.querySelector(sel);
-const esc = (s) =>
-  String(s ?? "").replace(
-    /[&<>"']/g,
-    (c) =>
-      ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[
-        c
-      ],
-  );
-const money = (n) =>
-  `$${Number(n).toLocaleString("en-AU", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
-const m = (n) => `${Number(Number(n).toFixed(2))} m`;
-const DIR_LABEL = { E: "→ East", S: "↓ South", W: "← West", N: "↑ North" };
+const wide = () => globalThis.matchMedia?.("(min-width: 980px)").matches;
+const TAB_KEY = "scaffold-planner.tab";
 
 const state = {
   job: exampleJob(),
-  tab: "plan",
+  tab: wide() ? "plan" : "edit",
   elevRun: 0,
   jobs: [],
   store: null,
   settings: { overrides: {} },
   confirmDelete: null,
+  confirmShape: null,
+  moreOpen: false,
   saved: "Not saved",
   view3d: null,
 };
 
 try {
-  state.tab = localStorage.getItem("scaffold-planner.tab") || "plan";
+  state.tab = localStorage.getItem(TAB_KEY) || state.tab;
 } catch {
-  state.tab = "plan";
+  /* per-viewer convenience only */
 }
 
 function compute() {
@@ -69,12 +71,6 @@ function worstStatus() {
   return "ok";
 }
 
-const STATUS_TEXT = {
-  ok: "Loads OK",
-  over: "Over capacity",
-  unchecked: "Loads not checked",
-};
-
 function renderStrip() {
   const { job, built, quote } = state;
   $("#strip-job").textContent = job.name || "Untitled job";
@@ -91,273 +87,24 @@ function renderStrip() {
     `<span><b>${built.runs.reduce((a, r) => a + r.bays.length, 0)}</b> bays</span>`,
     `<span><b>${built.totalPieces}</b> pieces</span>`,
     `<span><b>${(built.totalWeight / 1000).toFixed(2)}</b> t</span>`,
-    `<span><b>${built.faceArea}</b> m² face</span>`,
     `<span><b>${money(quote.total)}</b> inc GST</span>`,
     `<span class="chip ${status}">${STATUS_TEXT[status]}</span>`,
   ].join("");
 }
 
-const opt = (value, label, current) =>
-  `<option value="${esc(value)}"${String(value) === String(current) ? " selected" : ""}>${esc(label)}</option>`;
-
-function field(label, inner, cls = "", hint = "") {
-  return `<label class="f ${cls}">${label}${inner}${hint ? `<span class="hint">${hint}</span>` : ""}</label>`;
-}
-
-const num = (key, value, step = "0.1", attrs = "") =>
-  `<input type="number" inputmode="decimal" step="${step}" id="job-${key}" data-k="${key}" value="${esc(value)}" ${attrs}/>`;
-
-function jobPanel() {
-  const { job } = state;
-  const sys = SYSTEMS[job.system];
-  const ledgers = lengthsOf(sys, "ledger");
-  return `<div class="panel">
-    <div class="panel-head"><h2>Job</h2><button class="btn small" data-act="new">New job</button></div>
-    <div class="grid2">
-      ${field("Job name", `<input id="job-name" data-k="name" value="${esc(job.name)}"/>`, "span-all")}
-      ${field("Client", `<input id="job-client" data-k="client" value="${esc(job.client)}"/>`)}
-      ${field("Site", `<input id="job-site" data-k="site" value="${esc(job.site)}"/>`)}
-    </div>
-    <h3>System</h3>
-    <div class="grid2">
-      ${field(
-        "Scaffold system",
-        `<select id="job-system" data-k="system">${Object.values(SYSTEMS)
-          .map((s) => opt(s.id, s.name, job.system))
-          .join("")}</select>`,
-        "span-all",
-        "Parts and bay sizes come from this system only.",
-      )}
-      ${field("Width", `<select id="job-width" data-k="width" data-type="num">${sys.widths.map((w) => opt(w.width, `${w.width} m · ${w.boards} boards`, job.width)).join("")}</select>`)}
-      ${field("Max bay", `<select id="job-maxBay" data-k="maxBay" data-type="num">${ledgers.map((l) => opt(l, `${l} m`, job.maxBay)).join("")}</select>`)}
-      ${field("Lift height", `<select id="job-liftHeight" data-k="liftHeight" data-type="num">${sys.liftHeights.map((l) => opt(l, `${l} m`, job.liftHeight)).join("")}</select>`)}
-      ${field("Gap to wall (m)", num("wallGap", job.wallGap, "0.05", 'min="0"'))}
-    </div>
-    <h3>Bracing, ties and duty</h3>
-    <div class="grid2">
-      ${field(
-        "Duty class",
-        `<select id="job-duty" data-k="duty">${Object.entries(DUTY_CLASSES)
-          .map(([k, d]) =>
-            opt(k, `${d.label} · ${d.kgPerBay} kg/bay`, job.duty),
-          )
-          .join("")}</select>`,
-      )}
-      ${field("Decks loaded at once", num("loadedDecks", job.loadedDecks, "1", 'min="1"'))}
-      ${field("Face brace every", num("braceEvery", job.braceEvery, "1", 'min="0"'), "", "bays (0 = none)")}
-      ${field("Ties every", num("tieEveryBays", job.tieEveryBays, "1", 'min="0"'), "", "standards (0 = none)")}
-      ${field("Tie height spacing (m)", num("tieVertical", job.tieVertical, "0.5", 'min="0"'), "", "0 = freestanding")}
-      <label class="check"><input type="checkbox" id="job-innerGuardrail" data-k="innerGuardrail"${job.innerGuardrail ? " checked" : ""}/> Inner guardrails</label>
-    </div>
-  </div>`;
-}
-
-function runCard(run, i, built) {
-  const r = built?.runs[i];
-  const meta = r
-    ? `${r.bays.length} bays (${r.bays.join(" + ")}) = ${m(r.scaffoldLength)} · ${r.levels.lifts} lifts · top deck +${r.levels.topDeck} m`
-    : "";
-  const id = run.id;
-  const rf = (key, inner, cls = "") => field(key, inner, cls);
-  const rnum = (k, step, attrs = "") =>
-    `<input type="number" inputmode="decimal" step="${step}" id="${id}-${k}" data-run="${id}" data-rk="${k}" value="${esc(run[k])}" ${attrs}/>`;
-  return `<div class="run">
-    <div class="run-head">
-      <input aria-label="Run name" id="${id}-label" data-run="${id}" data-rk="label" value="${esc(run.label)}"/>
-      <button class="btn small" data-act="up" data-id="${id}" aria-label="Move up"${i === 0 ? " disabled" : ""}>↑</button>
-      <button class="btn small danger" data-act="remove" data-id="${id}" aria-label="Remove run">✕</button>
-    </div>
-    <div class="grid3">
-      ${rf(
-        "Direction",
-        `<select id="${id}-direction" data-run="${id}" data-rk="direction">${Object.entries(
-          DIR_LABEL,
-        )
-          .map(([k, l]) => opt(k, l, run.direction))
-          .join("")}</select>`,
-      )}
-      ${rf("Wall length (m)", rnum("length", "0.1", 'min="0.5"'))}
-      ${rf("Work height (m)", rnum("height", "0.1", 'min="0.5"'))}
-      ${rf("Boarded decks", `<select id="${id}-decks" data-run="${id}" data-rk="decks">${opt("top", "Top only", run.decks)}${opt("all", "Every lift", run.decks)}</select>`)}
-      ${rf("Ladder bays", rnum("ladderBays", "1", 'min="0"'))}
-      <label class="check"><input type="checkbox" id="${id}-flip" data-run="${id}" data-rk="flip"${run.flip ? " checked" : ""}/> Other side</label>
-    </div>
-    <div class="run-meta">${esc(meta)}</div>
-  </div>`;
-}
-
-function runsPanel() {
-  return `<div class="panel">
-    <div class="panel-head"><h2>Runs</h2><button class="btn small primary" data-act="add">Add run</button></div>
-    <p class="note">Each run starts where the last one ended. Enter the wall length and the height of the top working deck.</p>
-    ${state.job.runs.map((r, i) => runCard(r, i, state.built)).join("")}
-  </div>`;
-}
-
 function renderEdit() {
-  $("#pane-edit").innerHTML = jobPanel() + runsPanel();
+  $("#pane-edit").innerHTML = editorHtml(state);
 }
 
-function refreshRunMeta() {
+function refreshEditor() {
+  const summary = $("#side-summary");
+  if (summary) summary.innerHTML = sideSummary(state.built);
+  const mini = $("#mini-plan");
+  if (mini && state.built) mini.innerHTML = planSvg(state.built);
   document.querySelectorAll("#pane-edit .run").forEach((el, i) => {
     const r = state.built?.runs[i];
-    if (!r) return;
-    el.querySelector(".run-meta").textContent =
-      `${r.bays.length} bays (${r.bays.join(" + ")}) = ${m(r.scaffoldLength)} · ${r.levels.lifts} lifts · top deck +${r.levels.topDeck} m`;
+    if (r) el.querySelector(".run-meta").textContent = runMeta(r);
   });
-}
-
-function legend() {
-  const item = (v, l) =>
-    `<span><i style="background:var(${v})"></i>${l}</span>`;
-  return `<div class="legend">${item("--steel", "Standards, ledgers, rails")}${item("--deck", "Working deck")}${item("--accent", "Ladder access bay")}${item("--brace", "Face brace")}${item("--tie", "Tie")}</div>`;
-}
-
-function planView() {
-  const { built } = state;
-  const runIdx = Math.min(state.elevRun, built.runs.length - 1);
-  const r = built.runs[runIdx];
-  return `<div class="panel">
-    <div class="panel-head"><h2>Plan view</h2><button class="btn small primary" data-act="pdf">Export PDF</button></div>
-    <div class="drawing">${planSvg(built)}</div>
-    ${legend()}
-  </div>
-  <div class="panel">
-    <div class="panel-head"><h2>Elevation</h2>
-      <select id="elev-run" data-elev aria-label="Run to show">${built.runs.map((x, i) => opt(i, x.run.label, runIdx)).join("")}</select>
-    </div>
-    <div class="drawing elev">${elevationSvg(r)}</div>
-    <p class="note">Outer face shown. T marks tie levels. Deck levels are measured from the base plate.</p>
-  </div>`;
-}
-
-function partsView() {
-  const { built } = state;
-  const rows = built.parts
-    .map(
-      (p) =>
-        `<tr><td class="mono">${esc(p.code)}</td><td>${esc(p.name)}</td><td class="n">${p.qty}</td><td class="n">${p.weight}</td><td class="n">${p.totalWeight}</td></tr>`,
-    )
-    .join("");
-  const missing = built.missing.length
-    ? `<p class="note warn">No catalogue part for: ${esc(built.missing.join(", "))}.</p>`
-    : "";
-  return `<div class="panel">
-    <div class="panel-head"><h2>Parts list · ${esc(built.system.name)}</h2>
-      <div class="row"><button class="btn small" data-act="csv">Export CSV</button><button class="btn small primary" data-act="pdf">Export PDF</button></div>
-    </div>
-    ${missing}
-    <div class="tablewrap"><table>
-      <thead><tr><th>Code</th><th>Description</th><th class="n">Qty</th><th class="n">Unit kg</th><th class="n">Total kg</th></tr></thead>
-      <tbody>${rows}<tr class="total"><td></td><td>Total</td><td class="n">${built.totalPieces}</td><td></td><td class="n">${built.totalWeight}</td></tr></tbody>
-    </table></div>
-    <p class="note">Counts each run on its own. Corner bays, hop-ups, stair towers and sheeting are not included yet.</p>
-  </div>`;
-}
-
-function quoteView() {
-  const { quote, built, job } = state;
-  const q = job.quote;
-  const qn = (k, label, step, hint = "") =>
-    field(
-      label,
-      `<input type="number" inputmode="decimal" step="${step}" id="q-${k}" data-q="${k}" value="${esc(q[k])}" min="0"/>`,
-      "",
-      hint,
-    );
-  const line = (l, v, cls = "") =>
-    `<tr class="${cls}"><td>${l}</td><td class="n">${money(v)}</td></tr>`;
-  return `<div class="panel">
-    <div class="panel-head"><h2>Quote</h2><button class="btn small primary" data-act="pdf">Export PDF</button></div>
-    <div class="grid3">
-      ${qn("weeks", "Hire weeks", "1")}
-      ${qn("erectRate", "Erect $/m²", "0.5")}
-      ${qn("dismantleRate", "Dismantle $/m²", "0.5")}
-      ${qn("cartage", "Cartage $ each way", "10")}
-      ${qn("marginPct", "Margin %", "1")}
-      ${qn("gstPct", "GST %", "1")}
-    </div>
-    <div class="tablewrap"><table><tbody>
-      ${line(`Hire, ${quote.weeks} weeks`, quote.hire)}
-      ${line(`Erect, ${built.faceArea} m²`, quote.erect)}
-      ${line(`Dismantle, ${built.faceArea} m²`, quote.dismantle)}
-      ${line("Cartage, delivery and return", quote.cartage)}
-      ${line(`Margin ${q.marginPct}%`, quote.margin)}
-      ${line("Total ex GST", quote.exGst, "total")}
-      ${line("GST", quote.gst)}
-      ${line("Total inc GST", quote.total, "total")}
-    </tbody></table></div>
-    <p class="note">Hire rates come from the Rates tab. Face area is scaffold length × (top deck + 1 m guardrail).</p>
-  </div>`;
-}
-
-function loadsView() {
-  const { job, loads } = state;
-  const rows = loads
-    .map(
-      (l) =>
-        `<tr><td>${esc(l.label)}</td><td class="n">${l.selfKN}</td><td class="n">${l.liveKN}</td><td class="n"><b>${l.legKN}</b></td><td class="n">${l.utilisation === null ? "–" : `${Math.round(l.utilisation * 100)}%`}</td><td class="n">${l.bearingKPa}</td><td class="n">${l.ties}</td><td class="status-${l.status}">${STATUS_TEXT[l.status]}</td></tr>`,
-    )
-    .join("");
-  const notes = loads.flatMap((l) => l.notes.map((n) => `${l.label}: ${n}`));
-  return `<div class="panel">
-    <div class="panel-head"><h2>Load check</h2></div>
-    <div class="grid3">
-      ${field("Allowable leg load (kN)", num("allowableLegKN", job.allowableLegKN, "0.5", 'min="0" placeholder="From Scafom data"'), "", "Manufacturer's figure for this lift height")}
-      ${field("Ground bearing (kPa)", num("groundBearingKPa", job.groundBearingKPa, "5", 'min="0" placeholder="Site value"'))}
-      ${field("Sole board area (m²)", num("soleArea", job.soleArea, "0.005", 'min="0.01"'))}
-    </div>
-    <div class="tablewrap"><table>
-      <thead><tr><th>Run</th><th class="n">Self kN</th><th class="n">Live kN</th><th class="n">Leg kN</th><th class="n">Use</th><th class="n">Base kPa</th><th class="n">Ties</th><th>Status</th></tr></thead>
-      <tbody>${rows}</tbody>
-    </table></div>
-    ${notes.map((n) => `<p class="note warn">${esc(n)}</p>`).join("")}
-    <p class="note">Worst standard per run: self weight of the column, ledgers, transoms, decks and toe boards it carries, plus ${DUTY_CLASSES[job.duty].label.toLowerCase()} (${DUTY_CLASSES[job.duty].kgPerBay} kg per bay) on ${job.loadedDecks} deck(s), shared half to each adjacent standard. Wind, tie forces, sheeting, hop-ups and loading bays are not included. Indicative only: a competent person must verify the design to AS/NZS 1576 and AS/NZS 4576.</p>
-  </div>`;
-}
-
-function ratesView() {
-  const sys = getSystem(
-    state.job.system,
-    state.settings.overrides?.[state.job.system] ?? {},
-  );
-  const rows = sys.components
-    .map(
-      (c) => `<tr><td class="mono">${esc(c.code)}</td><td>${esc(c.name)}</td>
-      <td class="n"><input type="number" step="0.1" id="rate-${esc(c.code)}-weight" data-rate="${esc(c.code)}" data-rf="weight" value="${c.weight}" aria-label="${esc(c.code)} weight"/></td>
-      <td class="n"><input type="number" step="0.05" id="rate-${esc(c.code)}-hire" data-rate="${esc(c.code)}" data-rf="hire" value="${c.hire}" aria-label="${esc(c.code)} hire rate"/></td></tr>`,
-    )
-    .join("");
-  return `<div class="panel">
-    <div class="panel-head"><h2>Rates · ${esc(sys.name)}</h2><button class="btn small" data-act="reset-rates">Reset to defaults</button></div>
-    <p class="note warn">Weights and hire rates start as example figures. Replace them with your Scafom and supplier catalogue values. Changes apply to every job using this system.</p>
-    <div class="tablewrap"><table>
-      <thead><tr><th>Code</th><th>Component</th><th class="n">kg</th><th class="n">$/week</th></tr></thead>
-      <tbody>${rows}</tbody>
-    </table></div>
-  </div>`;
-}
-
-function jobsView() {
-  const where =
-    state.store?.mode === "cloud"
-      ? "Saved jobs are shared with everyone who can edit this page."
-      : "Saved jobs live in this browser only.";
-  const items = [...state.jobs]
-    .sort((a, b) => String(b.updatedAt).localeCompare(String(a.updatedAt)))
-    .map(({ job, updatedAt }) => {
-      const confirming = state.confirmDelete === job.id;
-      const actions = confirming
-        ? `<span class="note">Delete this job?</span><button class="btn small danger" data-act="del-yes" data-id="${esc(job.id)}">Delete</button><button class="btn small" data-act="del-no">Keep</button>`
-        : `<button class="btn small primary" data-act="open" data-id="${esc(job.id)}">Open</button><button class="btn small" data-act="dup" data-id="${esc(job.id)}">Duplicate</button><button class="btn small danger" data-act="del" data-id="${esc(job.id)}">Delete</button>`;
-      return `<div class="jobitem"><div><div>${esc(job.name)}${job.id === state.job.id ? " · open" : ""}</div><div class="meta">${esc(SYSTEMS[job.system]?.name)} · ${esc(job.client)} · ${esc(String(updatedAt).slice(0, 10))}</div></div><div class="row">${actions}</div></div>`;
-    })
-    .join("");
-  return `<div class="panel">
-    <div class="panel-head"><h2>Jobs</h2><div class="row"><button class="btn small primary" data-act="new">New job</button><button class="btn small" data-act="save">Save now</button></div></div>
-    <p class="note">${where} Jobs save automatically as you edit.</p>
-    <div class="joblist">${items || '<p class="note">No saved jobs yet. Edit the example or start a new job and it saves here.</p>'}</div>
-  </div>`;
 }
 
 async function show3d() {
@@ -366,7 +113,7 @@ async function show3d() {
     state.view3d.update(state.built);
     return;
   }
-  pane.innerHTML = `<div class="panel"><div class="panel-head"><h2>3D view</h2><span class="note">Drag to orbit · pinch or scroll to zoom</span></div><div id="view3d"><p class="note" style="padding:16px">Loading 3D view…</p></div>${legend()}</div>`;
+  pane.innerHTML = `<div class="panel"><div class="panel-head"><h2>3D</h2><span class="note">Drag to turn · pinch to zoom</span></div><div id="view3d"><p class="note" style="padding:16px">Loading 3D view…</p></div>${legend()}</div>`;
   try {
     const { mount3d } = await import("./view3d.js");
     if (state.tab !== "3d") return;
@@ -377,17 +124,6 @@ async function show3d() {
     state.view3d = null;
   }
 }
-
-const VIEWS = {
-  plan: planView,
-  parts: partsView,
-  quote: quoteView,
-  loads: loadsView,
-  rates: ratesView,
-  jobs: jobsView,
-};
-
-const wide = () => globalThis.matchMedia?.("(min-width: 980px)").matches;
 
 function renderView() {
   const pane = $("#pane-view");
@@ -409,27 +145,20 @@ function renderView() {
     return;
   }
   state.view3d = null;
-  pane.innerHTML = VIEWS[state.tab]();
+  pane.innerHTML = VIEWS[state.tab](state);
 }
 
 function rerenderViewKeepingFocus() {
   const active = document.activeElement;
   const id = active?.id && $("#pane-view").contains(active) ? active.id : null;
-  const caret =
-    id && active.selectionStart !== undefined ? active.selectionStart : null;
   renderView();
-  if (id) {
-    const el = document.getElementById(id);
-    el?.focus();
-    if (caret !== null && el?.setSelectionRange && el.type !== "number")
-      el.setSelectionRange(caret, caret);
-  }
+  if (id) document.getElementById(id)?.focus();
 }
 
 function update({ structural = false, persist = true } = {}) {
   compute();
   if (structural) renderEdit();
-  else refreshRunMeta();
+  else refreshEditor();
   renderStrip();
   if (state.tab === "3d" && state.view3d) state.view3d.update(state.built);
   else if (state.tab !== "edit") rerenderViewKeepingFocus();
@@ -472,28 +201,42 @@ const OPTIONAL = new Set([
   "groundBearingKPa",
   "client",
   "site",
+  "name",
 ]);
+
+function setJob(next, opts) {
+  state.job = { ...next, example: false };
+  update(opts);
+}
 
 function onJobInput(el) {
   const key = el.dataset.k;
   if (el.value === "" && !OPTIONAL.has(key) && el.type !== "checkbox") return;
-  state.job = { ...state.job, [key]: parseValue(el), example: false };
-  const structural = key === "system";
-  if (structural) state.job = conformToSystem(state.job);
-  update({ structural });
+  setJob({ ...state.job, [key]: parseValue(el) });
+}
+
+function onShapeInput(el) {
+  if (el.value === "" || Number(el.value) < Number(el.min || 0)) return;
+  const shape = { ...state.job.shape, [el.dataset.shape]: Number(el.value) };
+  setJob(withShape(state.job, shape));
 }
 
 function onRunInput(el) {
   const { run: id, rk } = el.dataset;
-  state.job = {
+  if (el.type === "number" && el.value === "") return;
+  const runs = state.job.runs.map((r) =>
+    r.id === id ? { ...r, [rk]: parseValue(el) } : r,
+  );
+  if (runs.every((r) => r.length > 0 && r.height > 0))
+    setJob({ ...state.job, runs });
+}
+
+function onQuoteInput(el) {
+  if (el.value === "") return;
+  setJob({
     ...state.job,
-    example: false,
-    runs: state.job.runs.map((r) =>
-      r.id === id ? { ...r, [rk]: parseValue(el) } : r,
-    ),
-  };
-  const valid = state.job.runs.every((r) => r.length > 0 && r.height > 0);
-  if (valid) update();
+    quote: { ...state.job.quote, [el.dataset.q]: Number(el.value) || 0 },
+  });
 }
 
 let settingsTimer;
@@ -527,26 +270,66 @@ function onRateInput(el) {
 function onInput(e) {
   const el = e.target;
   if (el.dataset.k) onJobInput(el);
+  else if (el.dataset.shape) onShapeInput(el);
   else if (el.dataset.run) onRunInput(el);
-  else if (el.dataset.q) {
-    state.job = {
-      ...state.job,
-      quote: { ...state.job.quote, [el.dataset.q]: Number(el.value) || 0 },
-    };
-    update();
-  } else if (el.dataset.rate) onRateInput(el);
+  else if (el.dataset.q) onQuoteInput(el);
+  else if (el.dataset.rate) onRateInput(el);
   else if (el.matches("[data-elev]")) {
     state.elevRun = Number(el.value);
     renderView();
   }
 }
 
+function onSegment(btn) {
+  const { set, key, id } = btn.dataset;
+  const value = "num" in btn.dataset ? Number(btn.dataset.v) : btn.dataset.v;
+  if (set === "job") {
+    const next = { ...state.job, [key]: value };
+    setJob(key === "system" ? conformToSystem(next) : next, {
+      structural: true,
+    });
+  } else if (set === "shape") {
+    setJob(withShape(state.job, { ...state.job.shape, [key]: value }), {
+      structural: true,
+    });
+  } else if (set === "run") {
+    const runs = state.job.runs.map((r) =>
+      r.id === id ? { ...r, [key]: value } : r,
+    );
+    setJob({ ...state.job, runs }, { structural: true });
+  }
+}
+
+function onStep(btn) {
+  const input = document.getElementById(btn.dataset.for);
+  if (!input) return;
+  const step = Number(btn.dataset.step);
+  const min = Number(input.min || 0);
+  const next = Math.max(
+    min,
+    Math.round(((Number(input.value) || 0) + step) * 100) / 100,
+  );
+  input.value = String(next);
+  input.dispatchEvent(new Event("input", { bubbles: true }));
+}
+
 function openJob(job) {
   state.job = conformToSystem(job);
   state.elevRun = 0;
   state.confirmDelete = null;
+  state.confirmShape = null;
   state.saved = "Saved";
   update({ structural: true, persist: false });
+}
+
+function selectTab(tab) {
+  state.tab = tab;
+  try {
+    localStorage.setItem(TAB_KEY, tab);
+  } catch {
+    /* per-viewer convenience only */
+  }
+  renderView();
 }
 
 async function exportPdf() {
@@ -564,56 +347,83 @@ async function exportPdf() {
   }
 }
 
+function shapeFromRuns(type) {
+  const [first, second] = state.job.runs;
+  return {
+    type,
+    length: first?.length ?? 10,
+    depth: second?.length ?? 8,
+    height: first?.height ?? 4,
+    decks: first?.decks ?? "top",
+    ladders: 1,
+  };
+}
+
 const ACTIONS = {
+  shape: (type) => {
+    if (type === "custom") return ACTIONS.customise();
+    if (state.job.shape) {
+      setJob(withShape(state.job, { ...state.job.shape, type }), {
+        structural: true,
+      });
+      return;
+    }
+    state.confirmShape = type;
+    renderEdit();
+  },
+  "shape-yes": () => {
+    const type = state.confirmShape;
+    state.confirmShape = null;
+    setJob(withShape(state.job, shapeFromRuns(type)), { structural: true });
+  },
+  "shape-no": () => {
+    state.confirmShape = null;
+    renderEdit();
+  },
+  customise: () => {
+    if (!state.job.shape) return;
+    setJob({ ...state.job, shape: null }, { structural: true });
+  },
   add: () => {
     const last = state.job.runs.at(-1);
     const next = { E: "S", S: "W", W: "N", N: "E" }[last?.direction ?? "N"];
-    state.job = {
-      ...state.job,
-      runs: [
-        ...state.job.runs,
-        newRun({
-          label: `Run ${state.job.runs.length + 1}`,
-          direction: next,
-          height: last?.height ?? 4,
-        }),
-      ],
-    };
-    update({ structural: true });
+    const run = newRun({
+      label: `Side ${state.job.runs.length + 1}`,
+      direction: next,
+      height: last?.height ?? 4,
+    });
+    setJob(
+      { ...state.job, runs: [...state.job.runs, run] },
+      { structural: true },
+    );
   },
   remove: (id) => {
     if (state.job.runs.length === 1)
-      return toast("A job needs at least one run.");
-    state.job = {
-      ...state.job,
-      runs: state.job.runs.filter((r) => r.id !== id),
-    };
-    update({ structural: true });
+      return toast("A job needs at least one side.");
+    setJob(
+      { ...state.job, runs: state.job.runs.filter((r) => r.id !== id) },
+      { structural: true },
+    );
   },
   up: (id) => {
     const runs = [...state.job.runs];
     const i = runs.findIndex((r) => r.id === id);
     if (i > 0) [runs[i - 1], runs[i]] = [runs[i], runs[i - 1]];
-    state.job = { ...state.job, runs };
-    update({ structural: true });
+    setJob({ ...state.job, runs }, { structural: true });
   },
   new: () => {
-    const fresh = exampleJob();
-    openJob({
-      ...fresh,
-      example: false,
-      name: "New job",
-      client: "",
-      site: "",
-      runs: [newRun({ label: "Front", length: 10, height: 4 })],
-    });
+    openJob(blankJob(exampleJob()));
     state.saved = "Not saved";
     scheduleSave();
+    if (!wide()) selectTab("edit");
+    $("#job-name")?.select();
   },
   save: () => saveNow(),
   open: (id) => {
     const found = state.jobs.find((j) => j.job.id === id);
-    if (found) openJob(found.job);
+    if (!found) return;
+    openJob(found.job);
+    if (!wide()) selectTab("edit");
   },
   dup: (id) => {
     const found = state.jobs.find((j) => j.job.id === id);
@@ -657,18 +467,24 @@ const ACTIONS = {
 
 function onClick(e) {
   const tab = e.target.closest(".tabs button");
-  if (tab) {
-    state.tab = tab.dataset.tab;
-    try {
-      localStorage.setItem("scaffold-planner.tab", state.tab);
-    } catch {
-      /* per-viewer convenience only */
-    }
+  if (tab) return selectTab(tab.dataset.tab);
+  const segBtn = e.target.closest("[data-set]");
+  if (segBtn) return onSegment(segBtn);
+  const stepBtn = e.target.closest("[data-step]");
+  if (stepBtn) return onStep(stepBtn);
+  const side = e.target.closest("[data-run-index]");
+  if (side && state.tab === "plan") {
+    state.elevRun = Number(side.dataset.runIndex);
     renderView();
+    $("#elevation")?.scrollIntoView({ behavior: "smooth", block: "start" });
     return;
   }
   const btn = e.target.closest("[data-act]");
   if (btn) ACTIONS[btn.dataset.act]?.(btn.dataset.id);
+}
+
+function onToggle(e) {
+  if (e.target.id === "more-settings") state.moreOpen = e.target.open;
 }
 
 async function connectStore() {
@@ -691,6 +507,7 @@ async function connectStore() {
 
 document.addEventListener("input", onInput);
 document.addEventListener("click", onClick);
+document.addEventListener("toggle", onToggle, true);
 compute();
 renderEdit();
 renderStrip();

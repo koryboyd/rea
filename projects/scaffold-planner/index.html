@@ -121,12 +121,7 @@
   }
 
   .strip {
-    position: sticky;
-    top: env(safe-area-inset-top, 0px);
-    z-index: 5;
-    background: var(--bg);
-    border-bottom: 1px solid var(--line);
-    padding-block: 12px 0;
+    padding-block: 12px 10px;
     display: grid;
     gap: 10px;
   }
@@ -135,6 +130,10 @@
     flex-wrap: wrap;
     align-items: baseline;
     gap: 6px 14px;
+  }
+  .strip-pdf {
+    margin-left: auto;
+    align-self: center;
   }
   .titlebar h1 {
     font-size: 1.6rem;
@@ -192,6 +191,11 @@
   }
 
   .tabs {
+    position: sticky;
+    top: env(safe-area-inset-top, 0px);
+    z-index: 5;
+    background: var(--bg);
+    border-bottom: 1px solid var(--line);
     display: flex;
     gap: 2px;
     overflow-x: auto;
@@ -299,7 +303,8 @@
     background: var(--sunk);
     border: 1px solid var(--line);
     border-radius: 4px;
-    padding: 7px 8px;
+    padding: 9px 10px;
+    min-height: 44px;
     width: 100%;
     min-width: 0;
   }
@@ -336,8 +341,217 @@
     color: var(--bad);
   }
   button.btn.small {
-    padding: 4px 8px;
-    font-size: 0.8rem;
+    padding: 6px 12px;
+    min-height: 36px;
+    font-size: 0.85rem;
+  }
+  button:disabled {
+    opacity: 0.4;
+    cursor: default;
+  }
+  .seg {
+    display: flex;
+    border: 1px solid var(--line);
+    border-radius: 6px;
+    overflow: hidden;
+    background: var(--sunk);
+  }
+  .seg-btn {
+    flex: 1 1 0;
+    min-width: 0;
+    min-height: 44px;
+    font: inherit;
+    font-weight: 600;
+    font-size: 0.9rem;
+    color: var(--muted);
+    background: none;
+    border: 0;
+    border-left: 1px solid var(--line);
+    cursor: pointer;
+    padding: 6px 8px;
+  }
+  .seg-btn:first-child {
+    border-left: 0;
+  }
+  .seg-btn[aria-pressed="true"] {
+    background: var(--accent);
+    color: var(--accent-ink);
+  }
+  .shapes {
+    display: grid;
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+    gap: 6px;
+  }
+  .shape-btn {
+    display: grid;
+    justify-items: center;
+    gap: 2px;
+    font: inherit;
+    font-size: 0.75rem;
+    font-weight: 600;
+    line-height: 1.15;
+    color: var(--muted);
+    background: var(--sunk);
+    border: 1px solid var(--line);
+    border-radius: 6px;
+    padding: 8px 4px;
+    cursor: pointer;
+    min-width: 0;
+  }
+  .shape-btn svg {
+    width: 100%;
+    max-width: 52px;
+    height: auto;
+  }
+  .shape-btn[aria-pressed="true"] {
+    border-color: var(--accent);
+    color: var(--ink);
+    box-shadow: inset 0 0 0 1px var(--accent);
+  }
+  .ico-bldg {
+    fill: var(--line);
+  }
+  .ico-scaf {
+    fill: none;
+    stroke: var(--accent);
+    stroke-width: 3.5;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+  }
+  .stepper {
+    display: grid;
+    grid-template-columns: 44px minmax(0, 1fr) 44px;
+  }
+  .stepper input {
+    border-radius: 0;
+    text-align: center;
+    font-size: 1.05rem;
+    -moz-appearance: textfield;
+  }
+  .stepper input::-webkit-inner-spin-button,
+  .stepper input::-webkit-outer-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+  }
+  .step {
+    font: inherit;
+    font-size: 1.3rem;
+    line-height: 1;
+    color: var(--ink);
+    background: var(--surface);
+    border: 1px solid var(--line);
+    cursor: pointer;
+  }
+  .step:first-child {
+    border-radius: 4px 0 0 4px;
+    border-right: 0;
+  }
+  .step:last-child {
+    border-radius: 0 4px 4px 0;
+    border-left: 0;
+  }
+  .sides {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: grid;
+    gap: 4px;
+    font-size: 0.85rem;
+  }
+  .sides li {
+    display: grid;
+    grid-template-columns: minmax(5.5rem, 1fr) repeat(3, auto);
+    gap: 4px 12px;
+    padding: 6px 0;
+    border-top: 1px solid var(--line);
+    color: var(--muted);
+    font-family: var(--mono);
+    font-size: 0.78rem;
+    align-items: baseline;
+  }
+  .sides li b {
+    font-family: var(--body);
+    font-size: 0.88rem;
+    color: var(--ink);
+    font-weight: 600;
+  }
+  @media (max-width: 460px) {
+    .sides li {
+      grid-template-columns: 1fr 1fr;
+    }
+    .sides li b {
+      grid-column: 1 / -1;
+    }
+  }
+  .linkish {
+    font: inherit;
+    font-size: 0.88rem;
+    background: none;
+    border: 0;
+    padding: 4px 0;
+    color: var(--brace);
+    text-decoration: underline;
+    text-underline-offset: 3px;
+    cursor: pointer;
+    justify-self: start;
+    text-align: left;
+  }
+  .confirm {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    align-items: center;
+    padding: 10px;
+    border: 1px solid var(--warn);
+    border-radius: 6px;
+    font-size: 0.88rem;
+  }
+  details.more > summary {
+    list-style: none;
+    cursor: pointer;
+    display: grid;
+    gap: 2px;
+  }
+  details.more > summary::-webkit-details-marker {
+    display: none;
+  }
+  details.more > summary h2::after {
+    content: " +";
+    color: var(--muted);
+  }
+  details.more[open] > summary h2::after {
+    content: " −";
+  }
+  .drawing.mini svg {
+    max-height: 260px;
+  }
+  @media (min-width: 980px) {
+    .drawing.mini {
+      display: none;
+    }
+  }
+  .quote-total {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    gap: 12px;
+    padding: 12px 14px;
+    border-radius: 6px;
+    background: var(--sunk);
+  }
+  .quote-total b {
+    font-family: var(--mono);
+    font-size: 1.5rem;
+    font-weight: 500;
+  }
+  td.big {
+    font-family: var(--mono);
+    font-size: 1.1rem;
+    width: 4.5rem;
+  }
+  .sub {
+    font-size: 0.75rem;
+    color: var(--muted);
   }
   .row {
     display: flex;
@@ -522,19 +736,20 @@
       <span class="chip sys" id="strip-system">Scafom Cuplok</span>
       <span class="chip" id="strip-example">Example data</span>
       <span class="chip" id="strip-save">Not saved</span>
+      <button class="btn small primary strip-pdf" data-act="pdf">PDF</button>
     </div>
     <div class="totals" id="strip-totals" aria-live="polite"></div>
-    <nav class="tabs" role="tablist" aria-label="Sections">
-      <button role="tab" data-tab="edit" aria-selected="false">Edit</button>
-      <button role="tab" data-tab="plan" aria-selected="true">Plan</button>
-      <button role="tab" data-tab="3d" aria-selected="false">3D</button>
-      <button role="tab" data-tab="parts" aria-selected="false">Parts</button>
-      <button role="tab" data-tab="quote" aria-selected="false">Quote</button>
-      <button role="tab" data-tab="loads" aria-selected="false">Loads</button>
-      <button role="tab" data-tab="rates" aria-selected="false">Rates</button>
-      <button role="tab" data-tab="jobs" aria-selected="false">Jobs</button>
-    </nav>
   </header>
+  <nav class="tabs" role="tablist" aria-label="Sections">
+    <button role="tab" data-tab="edit" aria-selected="false">Job</button>
+    <button role="tab" data-tab="plan" aria-selected="true">Plan</button>
+    <button role="tab" data-tab="3d" aria-selected="false">3D</button>
+    <button role="tab" data-tab="parts" aria-selected="false">Parts</button>
+    <button role="tab" data-tab="quote" aria-selected="false">Quote</button>
+    <button role="tab" data-tab="loads" aria-selected="false">Loads</button>
+    <button role="tab" data-tab="rates" aria-selected="false">Rates</button>
+    <button role="tab" data-tab="jobs" aria-selected="false">Saved</button>
+  </nav>
 
   <main class="layout">
     <section class="pane" id="pane-edit" hidden></section>

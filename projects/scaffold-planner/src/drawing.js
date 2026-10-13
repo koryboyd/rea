@@ -110,7 +110,9 @@ export function planSvg(built, ink = SCREEN_INK) {
       toWorld(place, [r.run.length, 0, 0]),
       toWorld(place, [0, reach, 0]),
     );
+    out.push(`<g data-run-index="${i}">`);
     planRun(r, place, ink, out);
+    out.push("</g>");
   });
   if (pts.length === 0) return "";
   const b = bounds(pts, 0.6);

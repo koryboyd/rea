@@ -70,3 +70,46 @@ test("quote adds hire, labour, cartage, margin and GST", () => {
   assert.equal(q.total, Math.round((q.exGst + q.gst) * 100) / 100);
   assert.equal(q.gst, Math.round(q.exGst * 0.1 * 100) / 100);
 });
+
+test("shape presets build chained sides with ladder access on the front", async () => {
+  const { shapeRuns, withShape } = await import("../src/job.js");
+  const rect = shapeRuns({
+    type: "rect",
+    length: 10,
+    depth: 6,
+    height: 4,
+    decks: "top",
+    ladders: 1,
+  });
+  assert.deepEqual(
+    rect.map((r) => [r.label, r.direction, r.length]),
+    [
+      ["Front", "E", 10],
+      ["Right side", "S", 6],
+      ["Rear", "W", 10],
+      ["Left side", "N", 6],
+    ],
+  );
+  assert.equal(rect[0].ladderBays, 1);
+  const u = shapeRuns({
+    type: "U",
+    length: 10,
+    depth: 6,
+    height: 4,
+    decks: "all",
+    ladders: 2,
+  });
+  assert.equal(u.find((r) => r.label === "Front").ladderBays, 2);
+  assert.ok(u.every((r) => r.decks === "all"));
+  const job = withShape(exampleJob(), {
+    type: "wall",
+    length: 7,
+    depth: 0,
+    height: 3,
+    decks: "top",
+    ladders: 0,
+  });
+  const built = buildJob(job);
+  assert.equal(built.runs.length, 1);
+  assert.equal(built.missing.length, 0);
+});
