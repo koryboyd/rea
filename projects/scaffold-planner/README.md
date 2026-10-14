@@ -61,8 +61,17 @@ footprint on the ground. A key under the view lists the colours in use.
     Ladders and end openings swap ends every lift, so each ladder stands on
     deck and climbs through the opening above, never through steel. Ladders are
     picked to run about 1 m past the landing (Ringscaff 2 / 3 / 4 m ladders).
-    Where the tower meets a working deck, the main guardrail has a safety gate;
-    at other lifts the tower is railed on the scaffold side.
+    Droppers inside the tower sit on standard adapters (a 1 m standard on an
+    adapter clamped to the ledger). Where the tower meets a working deck, set
+    in **More settings › Ladder exits onto working decks**:
+  - **Dropper on adapter** (default): a standard adapter on the ledger closes
+    half the bay with guardrails and a toe board, and a tube dropper on a
+    swivel coupler hangs from the main standard across the rest, dropping
+    onto a coupler on the adapter standard.
+  - **Safety gate**: a self-closing gate on a guardrail post.
+    At other lifts the tower is railed on the scaffold side. Stair towers close
+    half the bay on a standard adapter the same way at working decks, leaving
+    the landing open where the flight arrives.
 - **Ties**: F-ties at the tie spacing: a tube along the inner standards
   coupled to the standard, and two tubes back to the wall anchors coupled to
   it, so three tubes and three right-angle couplers per tie. Tubes and

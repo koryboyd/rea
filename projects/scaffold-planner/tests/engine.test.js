@@ -67,8 +67,8 @@ test("ringscaff 6.5 m deck uses 0.5 m rings and Scafom parts", () => {
   assert.equal(front.levels.topDeck, 6.5);
   assert.deepEqual(front.levels.ledgerLevels, [0.5, 2.5, 4.5, 6.5]);
   assert.equal(built.missing.length, 0);
-  assert.equal(count(built, "E04RS0533"), 2);
-  assert.equal(count(built, "E04RS0501"), 2);
+  assert.equal(count(built, "E04RS0533"), 1);
+  assert.equal(count(built, "E04RS0501"), 1);
   assert.equal(count(built, "E04RS0456"), 1);
   assert.equal(count(built, "E04RS0455"), 2);
   assert.equal(count(built, "07100"), 0);
@@ -391,7 +391,7 @@ function onDeck(built, [u, v, z], margin = 0) {
   });
 }
 
-function ladderJob(ladderDecks, decks = "top") {
+function ladderJob(ladderDecks, decks = "top", ladderExit) {
   return import("../src/job.js").then(({ withShape }) => {
     const job = withShape(exampleJob(), {
       type: "wall",
@@ -400,7 +400,7 @@ function ladderJob(ladderDecks, decks = "top") {
       decks,
       ladders: 1,
     });
-    return buildJob({ ...job, ladderDecks });
+    return buildJob({ ...job, ladderDecks, ladderExit });
   });
 }
 
@@ -451,9 +451,75 @@ for (const style of ["sideways", "transom", "slot"]) {
   });
 }
 
-test("safety gates where a ladder tower meets a working deck", async () => {
+test("ladder exits onto working decks: half closed with a dropper on a standard adapter", async () => {
   for (const decks of ["top", "all"]) {
     const built = await ladderJob("sideways", decks);
+    const r = built.runs[0];
+    const vOut = r.gap + r.widthSpec.width;
+    const at = (c, v) => Math.abs(c.local.a[1] - v) < 1e-6;
+    for (const z of r.levels.deckLevels) {
+      const exit = built.components.find(
+        (c) =>
+          c.dropper &&
+          at(c, vOut) &&
+          Math.abs(c.local.b[1] - vOut) < 1e-6 &&
+          Math.abs(c.local.a[2] - z - 1.0) < 1e-6,
+      );
+      assert.ok(exit, `dropper across the exit at +${z}`);
+      const adapter = built.components.find(
+        (c) =>
+          c.kind === "adapter" &&
+          at(c, vOut) &&
+          Math.abs(c.local.a[2] - z) < 1e-6 &&
+          Math.abs(c.local.a[0] - exit.local.b[0]) < 1e-6,
+      );
+      assert.ok(adapter, "dropper drops onto the adapter standard");
+      const closing = built.components.filter(
+        (c) =>
+          c.rail &&
+          c.kind === "ledger" &&
+          at(c, vOut) &&
+          Math.abs(c.local.a[2] - z - 0.5) < 1e-6 &&
+          [c.local.a[0], c.local.b[0]].some(
+            (u) => Math.abs(u - adapter.local.a[0]) < 1e-6,
+          ),
+      );
+      assert.equal(closing.length, 1, "half the bay closed on the adapter");
+    }
+    const mainGates = built.components.filter(
+      (c) => c.kind === "gate" && at(c, vOut),
+    );
+    assert.equal(mainGates.length, 0);
+    const adapters = built.components.filter((c) => c.kind === "adapter");
+    assert.equal(count(built, "STD-ADAPTER"), adapters.length);
+  }
+});
+
+test("stair landings are half closed on a standard adapter at working decks", async () => {
+  const { withShape } = await import("../src/job.js");
+  const job = withShape(exampleJob(), {
+    type: "wall",
+    length: 8,
+    height: 6.5,
+    decks: "all",
+    ladders: 0,
+    stairs: 1,
+  });
+  const built = buildJob(job);
+  const r = built.runs[0];
+  const vOut = r.gap + r.widthSpec.width;
+  const adapters = built.components.filter(
+    (c) => c.kind === "adapter" && Math.abs(c.local.a[1] - vOut) < 1e-6,
+  );
+  assert.deepEqual(
+    adapters.map((c) => c.local.a[2]),
+    r.levels.deckLevels,
+  );
+});
+
+test("safety gates where a ladder tower meets a working deck", async () => {
+  for (const decks of ["top", "all"]) {
+    const built = await ladderJob("sideways", decks, "gate");
     const r = built.runs[0];
     const k = [...r.ladderBays][0];
     const vOut = r.gap + r.widthSpec.width;
@@ -509,7 +575,8 @@ test("ties are F-ties: three tubes and three couplers each", () => {
   assert.ok(ties > 0);
   const tubes = built.components.filter((c) => c.kind === "tube" && c.tie);
   assert.equal(tubes.length, ties * 3);
-  assert.equal(count(built, "CPL-DBL"), ties * 3);
+  const dropperCouplers = built.components.filter((c) => c.dropper).length;
+  assert.equal(count(built, "CPL-DBL"), ties * 3 + dropperCouplers);
 });
 
 test("hop-ups go in where the gap to the house is over 300 mm", async () => {

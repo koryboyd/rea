@@ -6,6 +6,7 @@ export const SCREEN_INK = {
   steel: "var(--steel)",
   deck: "var(--deck)",
   accent: "var(--accent)",
+  drop: "#c0392b",
   brace: "var(--brace)",
   tie: "var(--tie)",
   text: "var(--ink)",
@@ -18,6 +19,7 @@ export const PRINT_INK = {
   steel: "#4f6478",
   deck: "#c9a227",
   accent: "#d9822b",
+  drop: "#c0392b",
   brace: "#2f6f9f",
   tie: "#8a3b8f",
   text: "#1d2733",
@@ -188,6 +190,22 @@ function planRun(r, place, ink, colorOf, out) {
     out.push("</g>");
   });
   for (const g of r.exits ?? []) out.push(gateSwing(w, g, ink));
+  for (const [a, b] of r.droppers ?? [])
+    out.push(
+      line(
+        w(a[0], a[1]),
+        w(b[0], b[1]),
+        ink.drop,
+        0.07,
+        ' stroke-dasharray="0.14 0.06"',
+      ),
+    );
+  for (const p of r.adapters ?? []) {
+    const c = w(p[0], p[1]);
+    out.push(
+      `<rect x="${f(c[0] - 0.07)}" y="${f(c[1] - 0.07)}" width="0.14" height="0.14" fill="${ink.text}"/>`,
+    );
+  }
   if (r.layout.cornerBay) {
     const uE = r.us.at(-1);
     out.push('<g data-bay="corner">');
@@ -267,6 +285,8 @@ function legendRows(built, ink, colorOf, b) {
     items.push({ glyph: "ladder", label: "Ladder tower" });
   if (built.runs.some((r) => r.exits?.length))
     items.push({ bar: ink.accent, label: "Safety gate" });
+  if (built.runs.some((r) => r.droppers?.length))
+    items.push({ bar: ink.drop, label: "Dropper ■ adapter" });
   if (built.runs.some((r) => r.stairBays.size > 0))
     items.push({ swatch: ink.accent, label: "Stair tower" });
   if (built.runs.some((r) => r.bayHops?.some((h) => h > 0)))

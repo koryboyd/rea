@@ -346,6 +346,16 @@ function addComponent(B, c, ledgerColor) {
     case "tube":
       B.tube(c.tie ? FIXED.tie : FIXED.dropper, c.a, c.b, 0.024);
       return;
+    case "adapter":
+      B.box(
+        FIXED.wedge,
+        [c.a[0] - 0.07, c.a[1], c.a[2]],
+        [c.a[0] + 0.07, c.a[1], c.a[2]],
+        0.1,
+        0.12,
+        0.02,
+      );
+      return;
     case "coupler":
     case "swivel":
       B.box(

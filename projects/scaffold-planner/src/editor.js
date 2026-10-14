@@ -232,6 +232,21 @@ function morePanel(job, open) {
         "span-all",
         "Ladder towers stand outside the scaffold like stair towers, with a safety gate onto each working deck",
       )}
+      ${field(
+        "Ladder exits onto working decks",
+        seg({
+          scope: "job",
+          key: "ladderExit",
+          current: job.ladderExit ?? "dropper",
+          label: "Ladder exits",
+          options: [
+            { value: "dropper", label: "Dropper on adapter" },
+            { value: "gate", label: "Safety gate" },
+          ],
+        }),
+        "span-all",
+        "Dropper: half the bay closed on a standard adapter, tube dropper on a swivel across the rest",
+      )}
       ${n("loadedDecks", "Decks loaded at once", 1)}
       ${n("braceEvery", "Brace every", 1, "bays, plus both end bays of each side · 0 = none")}
       ${n("tieEveryBays", "Tie every", 1, "standards · 0 = none")}

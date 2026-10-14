@@ -10,6 +10,14 @@ const tube = (length, weight, hire) => ({
 });
 
 export const FITTINGS = [
+  {
+    code: "STD-ADAPTER",
+    name: "Standard adapter for ledger",
+    kind: "adapter",
+    length: 0,
+    weight: 2.5,
+    hire: 0.3,
+  },
   tube(1.5, 6.5, 0.2),
   tube(2.0, 8.7, 0.25),
   tube(3.0, 13.0, 0.35),

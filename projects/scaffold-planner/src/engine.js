@@ -476,55 +476,104 @@ const tubeFor = (system, span) => {
   return lens.find((l) => l >= span - EPS) ?? lens.at(-1);
 };
 
+// An access opening in a guardrail line: the longest ledger (with a toe
+// board) that still leaves the opening clear closes the rest of the bay.
+function exitSplit(system, len) {
+  const rest = lengthsOf(system, "ledger")
+    .filter(
+      (l) =>
+        l <= len - GATE_OPENING + EPS && findComponent(system, "toeboard", l),
+    )
+    .at(-1);
+  return { rest, open: rest ? round2(len - rest) : len };
+}
+
+// Guardrails and toe board from a standard to `at` along the line `v`.
+function closeRails(f, ctx, len, from, at, v, z1) {
+  for (const dz of [0.5, 1.0]) {
+    f.bar("ledger", len, [from, v, z1 + dz], [at, v, z1 + dz], { rail: true });
+  }
+  f.bar("toeboard", len, [from, v, z1], [at, v, z1], { face: "out" });
+}
+
+// Standard adapter clamped to the ledger at `p`, carrying a 1 m standard
+// for guardrails or a dropper to bear on.
+function adapterStandard(f, ctx, p) {
+  f.point("adapter", undefined, p);
+  f.bar("standard", 1.0, p, [p[0], p[1], p[2] + 1.0], {
+    rings: ctx.system.nodePitch,
+  });
+}
+
 // Self-closing safety gate in the guardrail line `v`, hinged on the standard
 // and closing onto a guardrail post; the rest of the bay keeps its
 // guardrail. The gate runs from its hinge (a) to its latch (b).
 function gateIn(f, ctx, b, z1, atStart, v) {
-  const { system } = ctx;
-  const rest = lengthsOf(system, "ledger")
-    .filter(
-      (l) =>
-        l <= b.len - GATE_OPENING + EPS && findComponent(system, "toeboard", l),
-    )
-    .at(-1);
-  const open = rest ? round2(b.len - rest) : b.len;
+  const { rest, open } = exitSplit(ctx.system, b.len);
   const [g0, g1] = atStart ? [b.u0, b.u0 + open] : [b.u1 - open, b.u1];
   if (rest) {
     const post = atStart ? g1 : g0;
-    const [r0, r1] = atStart ? [g1, b.u1] : [b.u0, g0];
     f.bar("gatepost", undefined, [post, v, z1 - 0.2], [post, v, z1 + 1.5]);
-    for (const dz of [0.5, 1.0]) {
-      f.bar("ledger", rest, [r0, v, z1 + dz], [r1, v, z1 + dz], {
-        rail: true,
-      });
-    }
-    f.bar("toeboard", rest, [r0, v, z1], [r1, v, z1], { face: "out" });
+    closeRails(f, ctx, rest, atStart ? b.u1 : b.u0, post, v, z1);
   }
   const [hinge, latch] = atStart ? [g0, g1] : [g1, g0];
   f.bar("gate", undefined, [hinge, v, z1], [latch, v, z1], { h: 1.0 });
   return (g0 + g1) / 2;
 }
 
-// Tube dropper across a ladder opening at guardrail height, hung on a swivel
-// coupler so the climber lifts it to step off and it drops back behind them.
-function dropper(f, ctx, from, to) {
+// Half-closed access in the guardrail line `v`: a standard adapter on the
+// ledger closes the rest of the bay with guardrails from the standard, and
+// the opening stays at the start or end. Returns the opening's standard and
+// the adapter position.
+function halfClose(f, ctx, b, z1, openAtStart, v) {
+  const { rest, open } = exitSplit(ctx.system, b.len);
+  const std = openAtStart ? b.u0 : b.u1;
+  if (!rest) return { std, adapter: openAtStart ? b.u1 : b.u0 };
+  const adapter = openAtStart ? b.u0 + open : b.u1 - open;
+  adapterStandard(f, ctx, [adapter, v, z1]);
+  closeRails(f, ctx, rest, openAtStart ? b.u1 : b.u0, adapter, v, z1);
+  return { std, adapter };
+}
+
+// Tube dropper at guardrail height, hung on a swivel coupler at `from` and
+// dropping onto a coupler at `to`, so the climber lifts it to step off and it
+// drops back behind them. Ends away from a standard bear on standard adapters.
+function dropper(f, ctx, from, to, { adapters = [] } = {}) {
+  const z = from[2] + 1.0;
+  for (const p of adapters) adapterStandard(f, ctx, p);
+  const a = [from[0], from[1], z];
+  const c = [to[0], to[1], z];
   f.bar(
     "tube",
-    tubeFor(ctx.system, Math.hypot(to[0] - from[0], to[1] - from[1])),
-    from,
-    to,
+    tubeFor(ctx.system, Math.hypot(c[0] - a[0], c[1] - a[1])),
+    a,
+    c,
     {
       dropper: true,
     },
   );
-  f.point("swivel", undefined, from);
+  f.point("swivel", undefined, a);
+  f.point("coupler", undefined, c);
+}
+
+// Where a ladder tower meets a working deck: a safety gate, or (the usual
+// way) half the bay closed on a standard adapter and a dropper across the
+// opening from the main standard onto the adapter standard.
+function ladderExit(f, ctx, b, z1, openAtStart) {
+  const { vout, job } = ctx;
+  if (job.ladderExit === "gate") {
+    gateIn(f, ctx, b, z1, openAtStart, vout);
+    return;
+  }
+  const { std, adapter } = halfClose(f, ctx, b, z1, openAtStart, vout);
+  dropper(f, ctx, [std, vout, z1], [adapter, vout, z1]);
 }
 
 // Ladder tower: the first ladder climbs the tower's outside face from the
 // ground through a safety gate onto a fully decked first lift; above that
 // each ladder climbs inside the tower through the opening, guarded by a tube
-// dropper. Where the tower meets a working deck the main guardrail has a
-// safety gate.
+// dropper on standard adapters. Where the tower meets a working deck the
+// access is half closed with a dropper, or a safety gate.
 function ladderTower(f, ctx, b, decks) {
   const { levels, W, vout, plankW, boards } = ctx;
   const working = new Set(decks);
@@ -534,7 +583,6 @@ function ladderTower(f, ctx, b, decks) {
   const opening = ladderOpening(ctx, b.len, style);
   const from = vout + (W - boards * plankW) / 2;
   const { open } = opening;
-  const rail = (z) => z + 1.0;
   levels.liftLevels.forEach((z1, k) => {
     const atStart = k % 2 === 1;
     if (k === 0) {
@@ -560,7 +608,11 @@ function ladderTower(f, ctx, b, decks) {
           });
         }
         const v = from + 2 * plankW;
-        dropper(f, ctx, [b.u0, v, rail(z1)], [b.u1, v, rail(z1)]);
+        const ends = [
+          [b.u0, v, z1],
+          [b.u1, v, z1],
+        ];
+        dropper(f, ctx, ...ends, { adapters: ends });
       } else {
         const edge = atStart ? b.u0 + open : b.u1 - open;
         if (style === "sideways") {
@@ -579,11 +631,15 @@ function ladderTower(f, ctx, b, decks) {
           const [u0, u1] = atStart ? [edge, b.u1] : [b.u0, edge];
           planks(f, ctx, { u0, u1, len: opening.deck }, z1, boards, from);
         }
-        dropper(f, ctx, [edge, vt, rail(z1)], [edge, vout, rail(z1)]);
+        const ends = [
+          [edge, vt, z1],
+          [edge, vout, z1],
+        ];
+        dropper(f, ctx, ...ends, { adapters: ends });
       }
       climb(f, ctx, atStart ? b.u0 + open / 2 : b.u1 - open / 2, z1, rise);
     }
-    if (working.has(z1)) gateIn(f, ctx, b, z1, !atStart, vout);
+    if (working.has(z1)) ladderExit(f, ctx, b, z1, !atStart);
   });
 }
 
@@ -694,8 +750,9 @@ function accessTower(f, ctx, b, working, outerGate) {
 }
 
 // Stair tower: the stair lane runs along the tower's outer face and the
-// landing decks sit against the main scaffold, so landings open onto the
-// working decks. Each flight carries inner and outer stair handrails.
+// landing decks sit against the main scaffold. At working decks half the bay
+// is closed on a standard adapter and the landing opens onto the deck where
+// the flight arrives. Each flight carries inner and outer stair handrails.
 function stairTower(f, ctx, b, decks) {
   const { system, levels, vout, plankW } = ctx;
   const working = new Set(decks);
@@ -711,6 +768,7 @@ function stairTower(f, ctx, b, decks) {
     f.bar("plank", b.len, [b.u0, vd, z1], [b.u1, vd, z1], { w: plankW - 0.01 });
     const z0 = round2(z1 - rise);
     const fwd = k % 2 === 0;
+    if (working.has(z1)) halfClose(f, ctx, b, z1, !fwd, vout);
     const fits = k === 0 ? z0 >= -EPS : near(z0, levels.liftLevels[k - 1]);
     if (fits) {
       const [ua, ub] = fwd ? [b.u0, b.u1] : [b.u1, b.u0];
@@ -935,6 +993,7 @@ const PART_ORDER = [
   "ladder",
   "gate",
   "gatepost",
+  "adapter",
   "basejack",
   "basecollar",
   "soleboard",
@@ -1059,6 +1118,12 @@ function buildRuns(job, system, widthSpec, sink, notes) {
       groundLadders: sink.comps
         .filter((c) => c.kind === "ladder" && c.run === i && c.local.a[2] === 0)
         .map((c) => c.local.a[0]),
+      droppers: sink.comps
+        .filter((c) => c.dropper && c.run === i)
+        .map((c) => [c.local.a, c.local.b]),
+      adapters: sink.comps
+        .filter((c) => c.kind === "adapter" && c.run === i)
+        .map((c) => c.local.a),
       exits: sink.comps
         .filter((c) => c.kind === "gate" && c.run === i)
         .map((c) => ({
