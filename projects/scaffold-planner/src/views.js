@@ -12,7 +12,7 @@ import {
 
 export const TOOLS = [
   { id: "brace", label: "Brace" },
-  { id: "ladder", label: "Ladder bay" },
+  { id: "ladder", label: "Ladder tower" },
   { id: "stair", label: "Stair" },
   { id: "hop1", label: "Hop-up 1" },
   { id: "hop2", label: "Hop-up 2" },

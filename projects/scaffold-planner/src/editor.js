@@ -76,7 +76,7 @@ function shapeInputs(shape) {
     ${s("length", "Length (m)", 0.5, 0.5)}
     ${usesDepth(shape.type) ? s("depth", "Depth (m)", 0.5, 0.5) : ""}
     ${s("height", "Work height (m)", 0.5, 0.5)}
-    ${s("ladders", "Ladder access bays", 1, 0)}
+    ${s("ladders", "Ladder towers", 1, 0)}
     ${s("stairs", "Stair towers", 1, 0)}
   </div>
   ${field("Hop-ups (inside, every working deck)", seg({ scope: "shape", key: "hopUps", current: shape.hopUps ?? "auto", label: "Hop-ups", options: HOPS }), "", "Auto puts hop-ups where the gap to the house is over 300 mm")}
@@ -158,7 +158,7 @@ function runCard(run, i, built, job) {
     <div class="grid2">
       ${rstep("length", "Wall length (m)", 0.5, 0.5)}
       ${rstep("height", "Work height (m)", 0.5, 0.5)}
-      ${rstep("ladderBays", "Ladder bays", 1, 0)}
+      ${rstep("ladderBays", "Ladder towers", 1, 0)}
       ${rstep("stairBays", "Stair towers", 1, 0)}
       ${rstep("wallGap", "Gap to wall (m)", 0.05, 0, job.wallGap)}
       ${field(
@@ -217,12 +217,12 @@ function morePanel(job, open) {
       )}
       ${n("wallGap", "Gap to wall (m)", 0.05, "over 0.30 gets hop-ups on Auto")}
       ${field(
-        "Ladder bay decks",
+        "Ladder tower decks",
         seg({
           scope: "job",
           key: "ladderDecks",
           current: job.ladderDecks ?? "sideways",
-          label: "Ladder bay decks",
+          label: "Ladder tower decks",
           options: [
             { value: "sideways", label: "Sideways decks" },
             { value: "transom", label: "Intermediate transom" },
@@ -230,7 +230,7 @@ function morePanel(job, open) {
           ],
         }),
         "span-all",
-        "Ground to first lift is an outside ladder with a safety gate",
+        "Ladder towers stand outside the scaffold like stair towers, with a safety gate onto each working deck",
       )}
       ${n("loadedDecks", "Decks loaded at once", 1)}
       ${n("braceEvery", "Brace every", 1, "bays, plus both end bays of each side · 0 = none")}

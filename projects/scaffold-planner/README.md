@@ -45,23 +45,21 @@ footprint on the ground. A key under the view lists the colours in use.
   gap widens to fit the bracket. From a builder's plan, stretches where the
   house steps back behind the scaffold line get hop-ups on those bays only,
   when the bracket clears the wall; otherwise the checks say so.
-- **Ladder access**: no hatches. Ground to first lift is a ladder outside the
-  outer face, resting on the top guardrail, landing through a self-closing
-  safety gate (E04RS0533) hung between the standard and a guardrail post
-  (E04RS0501). Above that, every lift in the ladder bay is decked bar where
-  the ladder goes, set in **More settings › Ladder bay decks**:
-  - **Sideways decks**: bay-width decks laid across the bay on its inner and
-    outer ledgers, with a 0.8 m+ opening at one end. No extra parts.
-  - **Intermediate transom**: an intermediate ledger (E04RS0020 / 0039 / 0053) across the bay carries shorter decks laid lengthwise, leaving a
-    0.8 m+ opening at the other end (e.g. 1.57 m decks in a 2.57 m bay).
-  - **Miss two decks**: two decks left out along one side (1.57 m bays or
-    longer, 3+ decks across).
-    End openings need the bay long enough that the ladder foot lands clear of
-    the opening below (2.07 m bays or longer); otherwise the next style that
-    fits is used. The opening swaps end or side every lift, so each ladder stands on deck
-    and climbs through the opening above, never through steel. Ladders are
+- **Ladder access**: a ladder tower bay outside the scaffold, like a stair
+  tower, never in the working deck. Each ladder faces the scaffold and leans
+  in towards it, so you step straight off the top onto the landing, starting
+  from the ground. Every tower lift is decked bar the ladder opening, set in
+  **More settings › Ladder tower decks**:
+  - **Sideways decks**: tower-width decks laid across on the ledgers, two
+    left out at one end. No extra parts.
+  - **Intermediate transom**: an intermediate ledger (E04RS0020 / 0039 / 0053) carries shorter decks laid lengthwise, opening at the other end.
+  - **Miss two decks**: two decks left out along the scaffold side.
+    Ladders and end openings swap ends every lift, so each ladder stands on
+    deck and climbs through the opening above, never through steel. Ladders are
     picked to run about 1 m past the landing (Ringscaff 2 / 3 / 4 m ladders).
-    Ladder bay ends get guardrails at lifts where the next bay has no deck.
+    Where the tower meets a working deck, the main guardrail has a self-closing
+    safety gate (E04RS0533) on a guardrail post (E04RS0501); at other lifts the
+    tower is railed on the scaffold side.
 - **Stair access**: a tower bay outside the scaffold (2.57 m bay on Ringscaff)
   with a platform stair per 2.0 m lift. The stair lane runs along the tower's
   outer face with inner and outer stair handrails on every flight (Scafom

@@ -66,34 +66,15 @@ function readableAngle(dir) {
 const rotated = (p, angle, extra = "") =>
   ` transform="rotate(${f(angle)} ${f(p[0])} ${f(p[1])})"${extra}`;
 
-function ladderGlyph(w, u0, u1, vIn, vOut, ink) {
-  const half = Math.min(0.2, (u1 - u0) / 8);
-  const um = u1 - half - 0.1;
-  const vMid = (vIn + vOut) / 2;
-  const vA = vMid - 0.13;
-  const vB = vMid + 0.13;
+// Ladder seen from above: it leans in towards the scaffold, so its stiles
+// run across the tower.
+function ladderGlyph(w, u, vA, vB, ink) {
   const out = [
-    line(w(um - half, vA), w(um + half, vA), ink.text, 0.035),
-    line(w(um - half, vB), w(um + half, vB), ink.text, 0.035),
-  ];
-  for (let k = -1; k <= 1; k++) {
-    const u = um + (half * k) / 1.5;
-    out.push(line(w(u, vA), w(u, vB), ink.text, 0.03));
-  }
-  return out.join("");
-}
-
-// Outside ladder from the ground with the safety gate in the guardrail.
-function exitGlyph(w, g0, g1, vOut, ink) {
-  const um = (g0 + g1) / 2;
-  const [vA, vB] = [vOut + 0.12, vOut + 0.75];
-  const out = [
-    line(w(g0, vOut), w(g1, vOut), ink.accent, 0.12),
-    line(w(um - 0.2, vA), w(um - 0.2, vB), ink.text, 0.035),
-    line(w(um + 0.2, vA), w(um + 0.2, vB), ink.text, 0.035),
+    line(w(u - 0.2, vA), w(u - 0.2, vB), ink.text, 0.035),
+    line(w(u + 0.2, vA), w(u + 0.2, vB), ink.text, 0.035),
   ];
   for (let v = vA + 0.12; v < vB; v += 0.18)
-    out.push(line(w(um - 0.2, v), w(um + 0.2, v), ink.text, 0.03));
+    out.push(line(w(u - 0.2, v), w(u + 0.2, v), ink.text, 0.03));
   return out.join("");
 }
 
@@ -156,7 +137,21 @@ function planRun(r, place, ink, colorOf, out) {
     }
     if (r.bracedBays?.has(i))
       out.push(braceMark(w(u0 + 0.08, vOut), w(u1 - 0.08, vOut)));
-    if (r.ladderBays.has(i)) out.push(ladderGlyph(w, u0, u1, vIn, vOut, ink));
+    if (r.ladderBays.has(i)) {
+      out.push(
+        polygon(quad(w, u0, u1, vOut, vOut + W), ink.muted, 0.3, ink.steel),
+      );
+      for (const u of r.groundLadders ?? []) {
+        if (u > u0 && u < u1)
+          out.push(ladderGlyph(w, u, vOut + 0.1, vOut + W - 0.1, ink));
+      }
+      const mid = (u0 + u1) / 2;
+      const side = (r.groundLadders ?? []).some((u) => u > u0 && u < mid);
+      const [l0, l1] = side ? [mid - 0.2, u1] : [u0, mid + 0.2];
+      out.push(
+        bayLabels(w, angle, "LADDER", deck, l0, l1, vOut, vOut + W, ink),
+      );
+    }
     if (r.stairBays.has(i)) {
       out.push(
         polygon(quad(w, u0, u1, vOut, vOut + W), ink.accent, 0.45, ink.steel),
@@ -170,7 +165,7 @@ function planRun(r, place, ink, colorOf, out) {
     out.push("</g>");
   });
   for (const [g0, g1] of r.exits ?? [])
-    out.push(exitGlyph(w, g0, g1, vOut, ink));
+    out.push(line(w(g0, vOut), w(g1, vOut), ink.accent, 0.12));
   if (r.layout.cornerBay) {
     const uE = r.us.at(-1);
     out.push('<g data-bay="corner">');
@@ -206,10 +201,7 @@ function planRun(r, place, ink, colorOf, out) {
       );
     }
   });
-  const reach = Math.max(
-    vOut + (r.stairBays.size ? W : 0),
-    r.exits?.length ? vOut + 0.75 : 0,
-  );
+  const reach = vOut + (r.stairBays.size || r.ladderBays.size ? W : 0);
   const labelAt = w((r.us[0] + r.us.at(-1)) / 2, reach + 0.55);
   out.push(
     text(
@@ -247,7 +239,7 @@ function legendRows(built, ink, colorOf, b) {
     items.push({ bar: ink.brace, label: "Braced face" });
   }
   if (built.runs.some((r) => r.ladderBays.size > 0))
-    items.push({ glyph: "ladder", label: "Ladder bay" });
+    items.push({ glyph: "ladder", label: "Ladder tower" });
   if (built.runs.some((r) => r.exits?.length))
     items.push({ bar: ink.accent, label: "Safety gate" });
   if (built.runs.some((r) => r.stairBays.size > 0))
@@ -293,7 +285,8 @@ export function planSvg(built, ink = SCREEN_INK, opts = {}) {
   built.runs.forEach((r, i) => {
     const place = built.places[i];
     const W = r.widthSpec.width;
-    const reach = r.gap + W + (r.stairBays.size ? W : 0) + 1.1;
+    const reach =
+      r.gap + W + (r.stairBays.size || r.ladderBays.size ? W : 0) + 1.1;
     const uA = Math.min(0, r.us[0]);
     const uB = Math.max(
       r.run.length,
