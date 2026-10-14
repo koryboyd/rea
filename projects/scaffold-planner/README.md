@@ -50,8 +50,8 @@ footprint on the ground. A key under the view lists the colours in use.
   safety gate (E04RS0533) hung between the standard and a guardrail post
   (E04RS0501). Above that, every lift in the ladder bay is decked bar where
   the ladder goes, set in **More settings › Ladder bay decks**:
-  - **Sideways decks**: bay-width decks laid across the bay with a 0.8 m+
-    opening at one end.
+  - **Sideways decks**: bay-width decks laid across the bay on its inner and
+    outer ledgers, with a 0.8 m+ opening at one end. No extra parts.
   - **Intermediate transom**: an intermediate ledger (E04RS0020 / 0039 / 0053) across the bay carries shorter decks laid lengthwise, leaving a
     0.8 m+ opening at the other end (e.g. 1.57 m decks in a 2.57 m bay).
   - **Miss two decks**: two decks left out along one side (1.57 m bays or
