@@ -63,7 +63,9 @@ footprint on the ground. A key under the view lists the colours in use.
     picked to run about 1 m past the landing (Ringscaff 2 / 3 / 4 m ladders).
     Droppers inside the tower sit on standard adapters (a 1 m standard on an
     adapter clamped to the ledger). Where the tower meets a working deck, set
-    in **More settings › Ladder exits onto working decks**:
+    in **More settings › Ladder exits onto working decks** (the exit is at the
+    end where that lift's ladder tops out, so you step straight off onto the
+    deck, and the tower dropper bears on the same adapter):
   - **Dropper on adapter** (default): a standard adapter on the ledger closes
     half the bay with guardrails and a toe board, and a tube dropper on a
     swivel coupler hangs from the main standard across the rest, dropping
@@ -74,7 +76,8 @@ footprint on the ground. A key under the view lists the colours in use.
     the landing open where the flight arrives.
 - **Ties**: F-ties at the tie spacing: a tie tube from the inner standard
   through the opening into the house, with two tubes coupled to it clamping
-  the wall, one against the outside face and one against the inside face, so
+  the wall: a horizontal tube against the outside face and a vertical tube
+  against the inside face, so
   three tubes and three right-angle couplers per tie (wall taken as 250 mm
   thick). Tubes and couplers are placeholder parts until you enter your own.
 - **Stair access**: a tower bay outside the scaffold (2.57 m bay on Ringscaff)

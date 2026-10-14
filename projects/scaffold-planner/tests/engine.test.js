@@ -500,6 +500,18 @@ test("ladder exits onto working decks: half closed with a dropper on a standard 
           ),
       );
       assert.equal(closing.length, 1, "half the bay closed on the adapter");
+      const ladder = built.components.find(
+        (c) =>
+          c.kind === "ladder" &&
+          c.local.a[2] < z &&
+          c.local.b[2] > z + 0.5 &&
+          z - c.local.a[2] < 2.6,
+      );
+      const [d0, d1] = [exit.local.a[0], exit.local.b[0]].sort((a, b) => a - b);
+      assert.ok(
+        ladder.local.a[0] > d0 && ladder.local.a[0] < d1,
+        `the ladder to +${z} tops out at the exit`,
+      );
     }
     const mainGates = built.components.filter(
       (c) => c.kind === "gate" && at(c, vOut),
@@ -590,6 +602,10 @@ test("ties are F-ties: three tubes and three couplers each", () => {
   assert.ok(ties > 0);
   const tubes = built.components.filter((c) => c.kind === "tube" && c.tie);
   assert.equal(tubes.length, ties * 3);
+  const vertical = tubes.filter(
+    (c) => Math.abs(c.local.b[2] - c.local.a[2]) > 1,
+  );
+  assert.equal(vertical.length, ties, "inside tube runs vertically");
   const dropperCouplers = built.components.filter((c) => c.dropper).length;
   assert.equal(count(built, "CPL-DBL"), ties * 3 + dropperCouplers);
 });
