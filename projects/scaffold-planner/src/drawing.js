@@ -78,6 +78,29 @@ function ladderGlyph(w, u, vA, vB, ink) {
   return out.join("");
 }
 
+// Plan symbol of a gate: the leaf drawn open into the deck, swinging away
+// from the edge, with its swing arc back to the closed position.
+function gateSwing(w, { hinge, latch }, vOut, ink) {
+  const L = Math.abs(latch - hinge);
+  const s = Math.sign(latch - hinge) || 1;
+  const arc = [];
+  for (let k = 0; k <= 12; k++) {
+    const t = (k / 12) * (Math.PI / 2);
+    arc.push(w(hinge + s * L * Math.cos(t), vOut - L * Math.sin(t)));
+  }
+  return (
+    line(
+      w(hinge, vOut),
+      w(latch, vOut),
+      ink.accent,
+      0.05,
+      ' stroke-dasharray="0.08 0.06"',
+    ) +
+    line(w(hinge, vOut), w(hinge, vOut - L), ink.accent, 0.08) +
+    `<polyline points="${arc.map((p) => `${f(p[0])},${f(p[1])}`).join(" ")}" fill="none" stroke="${ink.accent}" stroke-width="0.03" stroke-dasharray="0.08 0.06"/>`
+  );
+}
+
 function bayLabels(w, angle, label, sub, u0, u1, vIn, vOut, ink) {
   const len = u1 - u0;
   const width = vOut - vIn;
@@ -164,8 +187,7 @@ function planRun(r, place, ink, colorOf, out) {
     );
     out.push("</g>");
   });
-  for (const [g0, g1] of r.exits ?? [])
-    out.push(line(w(g0, vOut), w(g1, vOut), ink.accent, 0.12));
+  for (const g of r.exits ?? []) out.push(gateSwing(w, g, vOut, ink));
   if (r.layout.cornerBay) {
     const uE = r.us.at(-1);
     out.push('<g data-bay="corner">');
@@ -367,6 +389,29 @@ function dimChain(stations, at, from, axis, ink) {
   return out.join("");
 }
 
+// Elevation of a gate: frame, toe board, uprights and the brace from the
+// hinge foot to the latch top.
+function gateFace(P, c, ink) {
+  const { a, b } = c.local;
+  const h = c.h ?? 1.0;
+  const z = a[2];
+  const [u0, u1] = [a[0], b[0]];
+  const step = Math.sign(u1 - u0) * 0.12;
+  const out = [
+    `<polygon points="${[P(u0, z), P(u1, z), P(u1, z + h), P(u0, z + h)].map((p) => `${f(p[0])},${f(p[1])}`).join(" ")}" fill="${ink.accent}" fill-opacity="0.12" stroke="${ink.accent}" stroke-width="0.05"/>`,
+    line(P(u0, z + 0.15), P(u1, z + 0.15), ink.accent, 0.04),
+    line(P(u0, z + 0.5), P(u1, z + 0.5), ink.accent, 0.035),
+    line(P(u0, z + 0.15), P(u1, z + h), ink.accent, 0.035),
+  ];
+  for (
+    let u = u0 + step;
+    Math.abs(u - u0) < Math.abs(u1 - u0) - 0.06;
+    u += step
+  )
+    out.push(line(P(u, z + 0.15), P(u, z + h), ink.accent, 0.015));
+  return out.join("");
+}
+
 export function elevationSvg(built, index, ink = SCREEN_INK) {
   const r = built.runs[index];
   const W = r.widthSpec.width;
@@ -397,9 +442,7 @@ export function elevationSvg(built, index, ink = SCREEN_INK) {
       continue;
     }
     if (c.kind === "gate") {
-      out.push(
-        `<rect x="${f(Math.min(a[0], b[0]))}" y="${f(top - a[2] - 0.9)}" width="${f(Math.abs(b[0] - a[0]))}" height="0.9" fill="none" stroke="${ink.accent}" stroke-width="0.05"/>`,
-      );
+      out.push(gateFace(P, c, ink));
       continue;
     }
     const style = STYLE[c.kind];
@@ -454,7 +497,7 @@ export function elevationSvg(built, index, ink = SCREEN_INK) {
     ),
     text(
       [(u0 + u1) / 2, -0.45],
-      `${r.run.label} · outer face · ${r.levels.lifts} lifts`,
+      `${r.run.label} · outer face · ${r.levels.lifts} ${r.levels.lifts === 1 ? "lift" : "lifts"}`,
       0.32,
       ink.text,
       "middle",

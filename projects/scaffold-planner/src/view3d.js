@@ -203,13 +203,28 @@ function stairParts(B, c) {
   }
 }
 
+// Self-closing safety gate: hinge stile on the standard (a), latch stile at
+// the post (b), top and knee rails, uprights, a brace from the hinge foot,
+// the built-in toe board, hinge clamps and the latch.
 function gateParts(B, c) {
-  const h = c.h ?? 0.9;
-  const up = (p, dz) => [p[0], p[1], p[2] + dz];
-  for (const dz of [0.15, 0.55, h])
-    B.tube(FIXED.gate, up(c.a, dz), up(c.b, dz), 0.016);
-  for (const p of [c.a, c.b]) B.tube(FIXED.gate, up(p, 0.02), up(p, h), 0.016);
-  B.box(FIXED.gate, up(c.a, 0.07), up(c.b, 0.07), 0.02, 0.14);
+  const h = c.h ?? 1.0;
+  const L = Math.hypot(c.b[0] - c.a[0], c.b[1] - c.a[1]) || 1;
+  const at = (t, dz) => [
+    c.a[0] + ((c.b[0] - c.a[0]) * t) / L,
+    c.a[1] + ((c.b[1] - c.a[1]) * t) / L,
+    c.a[2] + dz,
+  ];
+  const [s0, s1] = [0.06, L - 0.05];
+  for (const t of [s0, s1]) B.tube(FIXED.gate, at(t, 0.03), at(t, h), 0.02);
+  for (const dz of [0.5, h - 0.02])
+    B.tube(FIXED.gate, at(s0, dz), at(s1, dz), 0.018);
+  B.box(FIXED.gate, at(s0, 0.03), at(s1, 0.03), 0.02, 0.15);
+  for (let t = s0 + 0.12; t < s1 - 0.06; t += 0.12)
+    B.tube(FIXED.gate, at(t, 0.18), at(t, h - 0.02), 0.008);
+  B.tube(FIXED.gate, at(s0, 0.18), at(s1, h - 0.04), 0.012);
+  for (const dz of [0.25, h - 0.15])
+    B.box(FIXED.wedge, at(0, dz), at(s0 + 0.03, dz), 0.07, 0.07);
+  B.box(FIXED.wedge, at(s1 - 0.02, h - 0.2), at(L, h - 0.2), 0.05, 0.05);
 }
 
 function standardParts(B, c) {

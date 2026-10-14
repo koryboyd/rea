@@ -472,8 +472,9 @@ function climb(f, ctx, u, z1, rise) {
 }
 
 // Self-closing safety gate in the main outer guardrail where a ladder tower
-// landing meets a working deck, hung between the standard and a guardrail
-// post; the rest of the bay keeps its guardrail.
+// landing meets a working deck, hinged on the standard and closing onto a
+// guardrail post; the rest of the bay keeps its guardrail. The gate runs
+// from its hinge (a) to its latch (b).
 function mainGate(f, ctx, b, z1, atStart) {
   const { system, vout } = ctx;
   const rest = lengthsOf(system, "ledger")
@@ -500,7 +501,8 @@ function mainGate(f, ctx, b, z1, atStart) {
     }
     f.bar("toeboard", rest, [r0, vout, z1], [r1, vout, z1], { face: "out" });
   }
-  f.bar("gate", undefined, [g0, vout, z1], [g1, vout, z1], { h: 1.0 });
+  const [hinge, latch] = atStart ? [g0, g1] : [g1, g0];
+  f.bar("gate", undefined, [hinge, vout, z1], [latch, vout, z1], { h: 1.0 });
 }
 
 function ladderTower(f, ctx, b, decks) {
@@ -995,7 +997,7 @@ function buildRuns(job, system, widthSpec, sink, notes) {
         .map((c) => c.local.a[0]),
       exits: sink.comps
         .filter((c) => c.kind === "gate" && c.run === i)
-        .map((c) => [c.local.a[0], c.local.b[0]]),
+        .map((c) => ({ hinge: c.local.a[0], latch: c.local.b[0] })),
       bayHops: lay.bays.map((_, k) => built.ctx.bayHop(k)?.bracket ?? 0),
       bayDecks: lay.bays.map((_, k) => built.ctx.bayDecks(k)),
       bracedBays: built.ctx.bracedBays,
