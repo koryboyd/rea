@@ -836,9 +836,12 @@ function cornerBay(f, ctx, uE, levels, pieces) {
   }
 }
 
-// F-tie at each tie point: a tube along the inner standards coupled to the
-// standard, with two tubes from it back to the anchors in the wall, each
-// coupled to it. Three tubes and three right-angle couplers per tie.
+const WALL_THICKNESS = 0.25;
+
+// F-tie at each tie point: a tie tube from the inner standard through the
+// opening into the house, clamping the wall between two tubes coupled to it,
+// one against the outside face and one against the inside face. Three tubes
+// and three right-angle couplers per tie.
 function tieComponents(f, ctx, us, skipFirst) {
   const { job, levels, vin, system } = ctx;
   if (job.tieEveryBays <= 0) return 0;
@@ -846,21 +849,28 @@ function tieComponents(f, ctx, us, skipFirst) {
   const picks = [];
   for (let k = 0; k < lines.length; k += job.tieEveryBays) picks.push(lines[k]);
   if (lines.length && picks.at(-1) !== lines.at(-1)) picks.push(lines.at(-1));
-  const len = tubeFor(system, 1.5);
-  const v = vin - 0.06;
+  const inside = -(WALL_THICKNESS + 0.05);
+  const tieLen = tubeFor(system, vin - inside + 0.15);
+  const armLen = tubeFor(system, 1.5);
   let count = 0;
   for (const u of picks) {
     for (const z of levels.tieLevels) {
-      f.bar("tube", len, [u - len / 2, v, z], [u + len / 2, v, z], {
+      const ut = u + 0.06;
+      f.bar("tube", tieLen, [ut, vin + 0.1, z], [ut, vin + 0.1 - tieLen, z], {
         tie: true,
       });
-      f.point("coupler", undefined, [u, v, z]);
-      for (const du of [-0.55, 0.55]) {
-        const arm = [u + du, v, z - 0.06];
-        f.bar("tube", len, [u + du, 0, z - 0.06], [u + du, v + 0.1, z - 0.06], {
-          tie: true,
-        });
-        f.point("coupler", undefined, arm);
+      f.point("coupler", undefined, [ut, vin, z]);
+      for (const v of [0.03, inside]) {
+        f.bar(
+          "tube",
+          armLen,
+          [ut - 0.2, v, z + 0.05],
+          [ut - 0.2 + armLen, v, z + 0.05],
+          {
+            tie: true,
+          },
+        );
+        f.point("coupler", undefined, [ut, v, z + 0.05]);
       }
       count++;
     }

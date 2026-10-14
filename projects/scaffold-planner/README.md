@@ -72,10 +72,11 @@ footprint on the ground. A key under the view lists the colours in use.
     At other lifts the tower is railed on the scaffold side. Stair towers close
     half the bay on a standard adapter the same way at working decks, leaving
     the landing open where the flight arrives.
-- **Ties**: F-ties at the tie spacing: a tube along the inner standards
-  coupled to the standard, and two tubes back to the wall anchors coupled to
-  it, so three tubes and three right-angle couplers per tie. Tubes and
-  couplers are placeholder parts until you enter your own.
+- **Ties**: F-ties at the tie spacing: a tie tube from the inner standard
+  through the opening into the house, with two tubes coupled to it clamping
+  the wall, one against the outside face and one against the inside face, so
+  three tubes and three right-angle couplers per tie (wall taken as 250 mm
+  thick). Tubes and couplers are placeholder parts until you enter your own.
 - **Stair access**: a tower bay outside the scaffold (2.57 m bay on Ringscaff)
   with a platform stair per 2.0 m lift. The stair lane runs along the tower's
   outer face with inner and outer stair handrails on every flight (Scafom
