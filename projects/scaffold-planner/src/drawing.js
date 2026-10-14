@@ -179,9 +179,33 @@ function planRun(r, place, ink, colorOf, out) {
     }
     if (r.stairBays.has(i)) {
       out.push(
-        polygon(quad(w, u0, u1, vOut, vOut + W), ink.accent, 0.45, ink.steel),
+        polygon(
+          quad(w, u0, u1, vOut, vOut + r.stairWidth),
+          ink.accent,
+          0.45,
+          ink.steel,
+        ),
+        line(
+          w(u0 + 0.1, vOut + r.stairWidth / 2),
+          w(u1 - 0.1, vOut + r.stairWidth / 2),
+          ink.steel,
+          0.03,
+          ' stroke-dasharray="0.12 0.08"',
+        ),
       );
-      out.push(bayLabels(w, angle, "STAIR", deck, u0, u1, vOut, vOut + W, ink));
+      out.push(
+        bayLabels(
+          w,
+          angle,
+          "STAIR",
+          deck,
+          u0,
+          u1,
+          vOut,
+          vOut + r.stairWidth,
+          ink,
+        ),
+      );
     }
     const sub = (r.bayDecks?.[i]?.length ?? 1) > 1 ? "every lift" : deck;
     out.push(
@@ -243,7 +267,7 @@ function planRun(r, place, ink, colorOf, out) {
   });
   const reach =
     vOut +
-    (r.stairBays.size || r.ladderBays.size ? W : 0) +
+    Math.max(r.stairBays.size ? r.stairWidth : 0, r.ladderBays.size ? W : 0) +
     (r.ladderBays.size ? 0.8 : 0);
   const labelAt = w((r.us[0] + r.us.at(-1)) / 2, reach + 0.55);
   out.push(
@@ -333,7 +357,7 @@ export function planSvg(built, ink = SCREEN_INK, opts = {}) {
     const reach =
       r.gap +
       W +
-      (r.stairBays.size || r.ladderBays.size ? W : 0) +
+      Math.max(r.stairBays.size ? r.stairWidth : 0, r.ladderBays.size ? W : 0) +
       (r.ladderBays.size ? 0.8 : 0) +
       1.1;
     const uA = Math.min(0, r.us[0]);

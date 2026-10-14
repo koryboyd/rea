@@ -78,12 +78,14 @@ footprint on the ground. A key under the view lists the colours in use.
   three tubes and three right-angle couplers per tie (wall taken as 250 mm
   thick). Tubes and couplers are placeholder parts until you enter your own.
 - **Stair access**: a tower bay outside the scaffold (2.57 m bay on Ringscaff)
-  with a platform stair per 2.0 m lift. The stair lane runs along the tower's
-  outer face with inner and outer stair handrails on every flight (Scafom
-  01040 / 01041); landing decks sit against the main scaffold. Every lift has
-  guardrails on the outer face and both ends, and on the main-scaffold side
-  wherever that bay has no working deck. At working decks the main guardrail
-  is open onto the landing.
+  two stair lanes wide (1.40 m on Ringscaff), with a platform stair per 2.0 m
+  lift. Flights alternate lanes and directions, so each one tops out beside
+  the start of the next instead of under it, and the two platforms make the
+  landing at that end. Every flight has outer and inner stair handrails
+  (Scafom 01040 / 01041). Every lift has guardrails on the outer face and both
+  ends, and on the main-scaffold side wherever that bay has no working deck.
+  At working decks half the bay is closed on a standard adapter, leaving the
+  landing end open.
 - **Bracing**: every corner bay is braced on both outside faces. From a
   corner the side goes skip 2, brace, skip 2, brace (brace every 3rd bay); a
   free end braces its end bay. Every diagonal rises the same way

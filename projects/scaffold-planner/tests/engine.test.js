@@ -116,6 +116,21 @@ test("stair tower climbs every lift in a 2.57 m bay", async () => {
   assert.equal(r.bays[[...r.stairBays][0]], 2.57);
   assert.equal(count(built, "E04RS0589"), 3);
   assert.equal(built.missing.length, 0);
+  assert.equal(r.stairWidth, 1.4);
+  const flights = built.components
+    .filter((c) => c.kind === "stair")
+    .sort((a, b) => a.local.a[2] - b.local.a[2]);
+  flights.slice(1).forEach((next, k) => {
+    const prev = flights[k];
+    assert.ok(
+      Math.abs(next.local.a[1] - prev.local.a[1]) >= 0.64 - 1e-6,
+      "each flight is in the other lane from the one below",
+    );
+    assert.ok(
+      Math.abs(next.local.a[0] - prev.local.b[0]) < 1e-6,
+      "the next flight starts where the last one arrived",
+    );
+  });
 });
 
 test("inside corners stop the first side short of the second", () => {

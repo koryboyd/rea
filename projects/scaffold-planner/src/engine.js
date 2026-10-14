@@ -379,10 +379,10 @@ function crossMember(
   vin = ctx.vin,
   vout = ctx.vout,
 ) {
-  const { system, W } = ctx;
+  const { system } = ctx;
   const kind =
     carriesDeck || !system.bareTransom ? "transom" : system.bareTransom;
-  f.bar(kind, W, [u, vin, z], [u, vout, z], {
+  f.bar(kind, round2(vout - vin), [u, vin, z], [u, vout, z], {
     profile: kind === "transom" ? "u" : "tube",
   });
 }
@@ -705,11 +705,11 @@ function bayComponents(f, ctx, b, i) {
 // and on the main-scaffold side wherever the main bay has no working deck.
 // At `outerGate` the outer face is left to a safety gate.
 // Towers in neighbouring bays share their standards.
-function accessTower(f, ctx, b, working, outerGate) {
-  const { system, levels, W, vout } = ctx;
+function accessTower(f, ctx, b, working, outerGate, W = ctx.W) {
+  const { system, levels, vout } = ctx;
   const vt = vout + W;
   for (const u of [b.u0, b.u1]) {
-    const key = Math.round(u * 100);
+    const key = `${Math.round(u * 100)}|${Math.round(vt * 100)}`;
     if (ctx.towerLines.has(key)) continue;
     ctx.towerLines.add(key);
     standardColumn(f, ctx, u, vt);
@@ -749,45 +749,75 @@ function accessTower(f, ctx, b, working, outerGate) {
   return vt;
 }
 
-// Stair tower: the stair lane runs along the tower's outer face and the
-// landing decks sit against the main scaffold. At working decks half the bay
-// is closed on a standard adapter and the landing opens onto the deck where
-// the flight arrives. Each flight carries inner and outer stair handrails.
+// Stair towers are two stair lanes wide: the narrowest system width that
+// fits two flights side by side.
+export function stairTowerWidth(system) {
+  const need = 2 * (system.stair?.width ?? 0.64) + 0.05;
+  const widths = system.widths.map((w) => w.width).sort((a, b) => a - b);
+  return widths.find((w) => w >= need - EPS) ?? widths.at(-1);
+}
+
+// Stair tower: platform stairways alternate lanes and directions lift to
+// lift, so each flight tops out beside the start of the next one instead of
+// under it. The arriving and departing platforms make the landing at that end,
+// and at working decks half the bay is closed on a standard adapter with the
+// opening at that end. Each flight carries an outer handrail on the tower side
+// and an inner handrail on the side facing the other lane.
 function stairTower(f, ctx, b, decks) {
   const { system, levels, vout, plankW } = ctx;
   const working = new Set(decks);
-  const vt = accessTower(f, ctx, b, working);
+  const Wt = stairTowerWidth(system);
+  const vt = accessTower(f, ctx, b, working, undefined, Wt);
   const stairW = system.stair?.width ?? 0.64;
   const rise = system.stair?.rise ?? 2.0;
-  const vc = vt - 0.05 - stairW / 2;
-  const vd = vout + plankW / 2 + 0.02;
+  const lanes = [
+    { v: vt - 0.05 - stairW / 2, wall: vt, side: -1 },
+    { v: vout + 0.05 + stairW / 2, wall: vout, side: 1 },
+  ];
   const accessKind = hasKind(system, "accessladder")
     ? "accessladder"
     : "ladder";
+  const last = levels.liftLevels.length - 1;
   levels.liftLevels.forEach((z1, k) => {
-    f.bar("plank", b.len, [b.u0, vd, z1], [b.u1, vd, z1], { w: plankW - 0.01 });
     const z0 = round2(z1 - rise);
     const fwd = k % 2 === 0;
+    const lane = lanes[k % 2];
     if (working.has(z1)) halfClose(f, ctx, b, z1, !fwd, vout);
     const fits = k === 0 ? z0 >= -EPS : near(z0, levels.liftLevels[k - 1]);
     if (fits) {
       const [ua, ub] = fwd ? [b.u0, b.u1] : [b.u1, b.u0];
       const za = Math.max(0, z0);
-      f.bar("stair", b.len, [ua, vc, za], [ub, vc, z1], { w: stairW });
+      f.bar("stair", b.len, [ua, lane.v, za], [ub, lane.v, z1], { w: stairW });
       const edge = (v) => [
         [ua, v, za + 0.9],
         [ub, v, z1 + 0.9],
       ];
-      f.bar("stairrailouter", undefined, ...edge(vt - 0.06));
-      f.bar("stairrailinner", undefined, ...edge(vt - 0.04 - stairW));
+      f.bar("stairrailouter", undefined, ...edge(lane.wall + lane.side * 0.06));
+      f.bar(
+        "stairrailinner",
+        undefined,
+        ...edge(lane.wall + lane.side * (0.04 + stairW)),
+      );
     } else if (k === 0) {
+      const v = vout + plankW / 2 + 0.02;
       f.bar(
         accessKind,
         undefined,
-        [b.u0 + 0.3, vd, 0],
-        [b.u0 + 0.3 + z1 * 0.3, vd, z1],
-        { w: 0.4 },
+        [b.u0 + 0.3, v, 0],
+        [b.u0 + 0.3 + z1 * 0.3, v, z1],
+        {
+          w: 0.4,
+        },
       );
+    }
+    if (k === last) {
+      const other = lanes[(k + 1) % 2];
+      for (const dv of [-0.5, 0.5]) {
+        const v = other.v + dv * plankW;
+        f.bar("plank", b.len, [b.u0, v, z1], [b.u1, v, z1], {
+          w: plankW - 0.01,
+        });
+      }
     }
   });
 }
@@ -1125,6 +1155,7 @@ function buildRuns(job, system, widthSpec, sink, notes) {
         access.ladder.has(k) ? built.ctx.ladderStyle(len) : null,
       ),
       tight: built.ctx.tight,
+      stairWidth: stairTowerWidth(system),
       groundLadders: sink.comps
         .filter((c) => c.kind === "ladder" && c.run === i && c.local.a[2] === 0)
         .map((c) => c.local.a[0]),
