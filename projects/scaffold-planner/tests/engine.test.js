@@ -603,16 +603,20 @@ test("safety gates where a ladder tower meets a working deck", async () => {
     const gap = Math.min(Math.abs(u - g0), Math.abs(u - g1));
     assert.ok(u < g0 || u > g1, "ladder beside the gate, not in front of it");
     assert.ok(gap >= 0.2 && gap <= 0.5, "close enough to step off through it");
-    const rest = built.components.find(
+    const stub = built.components.find(
       (c) =>
         c.rail &&
         c.kind === "ledger" &&
+        Math.abs(c.local.a[0] - c.local.b[0]) < 1e-6 &&
         Math.abs(c.local.a[1] - vt) < 1e-6 &&
-        Math.abs(c.local.a[2] - first - 1.0) < 1e-6 &&
-        Math.min(c.local.a[0], c.local.b[0]) < u &&
-        Math.max(c.local.a[0], c.local.b[0]) > u,
+        c.local.b[1] > vt + 0.2 &&
+        Math.abs(c.local.a[2] - first - 1.0) < 1e-6,
     );
-    assert.ok(rest, "ladder rests on the outer guardrail ledger");
+    assert.ok(stub, "300 ledger straight out from the corner standard");
+    assert.ok(
+      Math.abs(u - stub.local.a[0]) <= 0.3,
+      "ladder against the 300 ledger",
+    );
     const droppers = built.components.filter((c) => c.dropper);
     assert.equal(droppers.length, r.levels.liftLevels.length - 1);
     assert.equal(count(built, "CPL-SWV"), droppers.length);

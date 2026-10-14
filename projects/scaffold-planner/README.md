@@ -48,9 +48,10 @@ footprint on the ground. A key under the view lists the colours in use.
 - **Ladder access**: a ladder tower bay outside the scaffold, like a stair
   tower, never in the working deck. The first ladder climbs the tower's
   outside face just past the corner standard that carries a self-closing
-  safety gate (E04RS0533, on a guardrail post E04RS0501), resting on a 0.33 m
-  ledger (E04RS1097) off that standard, so you step off sideways through the
-  gate onto a fully decked first lift. Above that
+  safety gate (E04RS0533, on a guardrail post E04RS0501), against a 0.33 m
+  ledger (E04RS1097) sticking straight out from that standard, so you step off
+  sideways in front of the gate and through it onto a fully decked first
+  lift. Above that
   each ladder climbs inside the tower, facing the scaffold and leaning in
   towards it so you step straight off onto the landing, and each opening has
   a tube dropper on a swivel coupler across it at guardrail height. Tower

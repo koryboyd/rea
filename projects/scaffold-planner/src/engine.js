@@ -583,9 +583,9 @@ function ladderExit(f, ctx, b, z1, openAtStart) {
 // Ladder tower (exits onto working decks sit at the end where that lift's
 // ladder tops out, so the climber steps straight off onto the deck):
 // the first ladder climbs the tower's outside face just past the corner
-// standard the gate hangs on, resting on a 300 ledger off that standard, so
-// the climber steps off sideways through the gate onto a fully decked first
-// lift; above that each ladder climbs inside the tower through the opening,
+// standard the gate hangs on, against a 300 ledger sticking straight out from
+// that standard, so the climber steps off sideways in front of the gate and
+// through it onto a fully decked first lift; above that each ladder climbs inside the tower through the opening,
 // guarded by a tube dropper on standard adapters. Where the tower meets a working deck the
 // access is half closed with a dropper, or a safety gate.
 function ladderTower(f, ctx, b, decks) {
@@ -620,7 +620,7 @@ function ladderTower(f, ctx, b, decks) {
         stub.kind,
         stub.len,
         [b.u1, vt, z1 + 1.0],
-        [b.u1 + stub.len, vt, z1 + 1.0],
+        [b.u1, vt + stub.len, z1 + 1.0],
         { rail: true },
       );
       climb(f, ctx, b.u1 + 0.25, z1, z1, vt);
