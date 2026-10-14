@@ -46,10 +46,10 @@ footprint on the ground. A key under the view lists the colours in use.
   house steps back behind the scaffold line get hop-ups on those bays only,
   when the bracket clears the wall; otherwise the checks say so.
 - **Ladder access**: a ladder tower bay outside the scaffold, like a stair
-  tower, never in the working deck. The first ladder climbs the tower's
-  outside face just past the corner standard that carries a self-closing
-  safety gate (E04RS0533, on a guardrail post E04RS0501), against a 0.33 m
-  ledger (E04RS1097) sticking straight out from that standard, so you step off
+  tower, never in the working deck. The first ladder rests on the end of a
+  0.33 m ledger (E04RS1097) sticking straight out from the corner standard
+  that carries a self-closing safety gate (E04RS0533, on a guardrail post
+  E04RS0501), so it stands 300 off the face beside the gate and you step off
   sideways in front of the gate and through it onto a fully decked first
   lift. Above that
   each ladder climbs inside the tower, facing the scaffold and leaning in

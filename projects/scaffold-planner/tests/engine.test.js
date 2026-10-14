@@ -600,9 +600,10 @@ test("safety gates where a ladder tower meets a working deck", async () => {
       (a, b) => a - b,
     );
     const u = ground.local.a[0];
-    const gap = Math.min(Math.abs(u - g0), Math.abs(u - g1));
-    assert.ok(u < g0 || u > g1, "ladder beside the gate, not in front of it");
-    assert.ok(gap >= 0.2 && gap <= 0.5, "close enough to step off through it");
+    assert.ok(
+      Math.abs(u - g0) < 0.05 || Math.abs(u - g1) < 0.05,
+      "ladder at the gate's corner standard, not in front of the gate",
+    );
     const stub = built.components.find(
       (c) =>
         c.rail &&
@@ -613,9 +614,13 @@ test("safety gates where a ladder tower meets a working deck", async () => {
         Math.abs(c.local.a[2] - first - 1.0) < 1e-6,
     );
     assert.ok(stub, "300 ledger straight out from the corner standard");
+    assert.ok(Math.abs(u - stub.local.a[0]) < 1e-6, "ladder on the ledger");
+    const [foot, top] = [ground.local.a, ground.local.b];
+    const t = (stub.local.a[2] - foot[2]) / (top[2] - foot[2]);
+    const vAtStub = foot[1] + (top[1] - foot[1]) * t;
     assert.ok(
-      Math.abs(u - stub.local.a[0]) <= 0.3,
-      "ladder against the 300 ledger",
+      Math.abs(vAtStub - stub.local.b[1]) < 0.05,
+      "ladder rests on the end of the ledger",
     );
     const droppers = built.components.filter((c) => c.dropper);
     assert.equal(droppers.length, r.levels.liftLevels.length - 1);
