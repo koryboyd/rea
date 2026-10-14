@@ -1,3 +1,4 @@
+import { FITTINGS } from "./fittings.js";
 import { RINGSCAFF } from "./ringscaff.js";
 
 // Nominal component data. Lengths, weights and rates are placeholders until
@@ -92,22 +93,7 @@ const generic = (prefix, stairBay) => [
     weight: 8.5,
     hire: 0.6,
   },
-  {
-    code: "TUBE-1.5",
-    name: "Tie tube 1.5 m",
-    kind: "tietube",
-    length: 1.5,
-    weight: 6.5,
-    hire: 0.2,
-  },
-  {
-    code: "CPL-DBL",
-    name: "Double coupler",
-    kind: "coupler",
-    length: 0,
-    weight: 1.0,
-    hire: 0.1,
-  },
+  ...FITTINGS,
 ];
 
 export const SYSTEMS = {

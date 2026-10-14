@@ -46,10 +46,14 @@ footprint on the ground. A key under the view lists the colours in use.
   house steps back behind the scaffold line get hop-ups on those bays only,
   when the bracket clears the wall; otherwise the checks say so.
 - **Ladder access**: a ladder tower bay outside the scaffold, like a stair
-  tower, never in the working deck. Each ladder faces the scaffold and leans
-  in towards it, so you step straight off the top onto the landing, starting
-  from the ground. Every tower lift is decked bar the ladder opening, set in
-  **More settings › Ladder tower decks**:
+  tower, never in the working deck. The first ladder climbs the tower's
+  outside face from the ground through a self-closing safety gate (E04RS0533,
+  on a guardrail post E04RS0501) onto a fully decked first lift. Above that
+  each ladder climbs inside the tower, facing the scaffold and leaning in
+  towards it so you step straight off onto the landing, and each opening has
+  a tube dropper on a swivel coupler across it at guardrail height. Tower
+  lifts are decked bar the opening, set in **More settings › Ladder tower
+  decks**:
   - **Sideways decks**: tower-width decks laid across on the ledgers, two
     left out at one end. No extra parts.
   - **Intermediate transom**: an intermediate ledger (E04RS0020 / 0039 / 0053) carries shorter decks laid lengthwise, opening at the other end.
@@ -57,9 +61,12 @@ footprint on the ground. A key under the view lists the colours in use.
     Ladders and end openings swap ends every lift, so each ladder stands on
     deck and climbs through the opening above, never through steel. Ladders are
     picked to run about 1 m past the landing (Ringscaff 2 / 3 / 4 m ladders).
-    Where the tower meets a working deck, the main guardrail has a self-closing
-    safety gate (E04RS0533) on a guardrail post (E04RS0501); at other lifts the
-    tower is railed on the scaffold side.
+    Where the tower meets a working deck, the main guardrail has a safety gate;
+    at other lifts the tower is railed on the scaffold side.
+- **Ties**: F-ties at the tie spacing: a tube along the inner standards
+  coupled to the standard, and two tubes back to the wall anchors coupled to
+  it, so three tubes and three right-angle couplers per tie. Tubes and
+  couplers are placeholder parts until you enter your own.
 - **Stair access**: a tower bay outside the scaffold (2.57 m bay on Ringscaff)
   with a platform stair per 2.0 m lift. The stair lane runs along the tower's
   outer face with inner and outer stair handrails on every flight (Scafom

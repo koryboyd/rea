@@ -22,6 +22,7 @@ const FIXED = {
   bracket: "#8a8a2a",
   alu: "#b9bec4",
   tie: "#8a3b8f",
+  dropper: "#c0392b",
   footprint: "#b9a6c9",
 };
 
@@ -342,8 +343,19 @@ function addComponent(B, c, ledgerColor) {
     case "stairrailinner":
       B.tube(FIXED.alu, c.a, c.b, 0.021);
       return;
-    case "tietube":
-      B.tube(FIXED.tie, c.a, c.b, 0.024);
+    case "tube":
+      B.tube(c.tie ? FIXED.tie : FIXED.dropper, c.a, c.b, 0.024);
+      return;
+    case "coupler":
+    case "swivel":
+      B.box(
+        FIXED.wedge,
+        [c.a[0] - 0.05, c.a[1], c.a[2]],
+        [c.a[0] + 0.05, c.a[1], c.a[2]],
+        0.09,
+        0.09,
+        -0.045,
+      );
       return;
     default:
   }
@@ -415,7 +427,7 @@ export function legend3d(built) {
   return `<div class="legend3d">
     <div><b>Standards</b>${stdChips}</div>
     <div><b>Ledgers, transoms</b>${ledChips}</div>
-    <div><b>Other</b>${chip(FIXED.rail, "Guardrails")}${chip(FIXED.brace, "Diagonals")}${chip(FIXED.deck, "Steel decks")}${chip(FIXED.gate, "Safety gate")}${chip(FIXED.jack, "Base jacks")}</div>
+    <div><b>Other</b>${chip(FIXED.rail, "Guardrails")}${chip(FIXED.brace, "Diagonals")}${chip(FIXED.deck, "Steel decks")}${chip(FIXED.gate, "Safety gate")}${chip(FIXED.dropper, "Ladder dropper")}${chip(FIXED.tie, "Ties")}${chip(FIXED.jack, "Base jacks")}</div>
   </div>`;
 }
 

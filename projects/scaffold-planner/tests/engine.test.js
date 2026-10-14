@@ -67,8 +67,8 @@ test("ringscaff 6.5 m deck uses 0.5 m rings and Scafom parts", () => {
   assert.equal(front.levels.topDeck, 6.5);
   assert.deepEqual(front.levels.ledgerLevels, [0.5, 2.5, 4.5, 6.5]);
   assert.equal(built.missing.length, 0);
-  assert.equal(count(built, "E04RS0533"), 1);
-  assert.equal(count(built, "E04RS0501"), 1);
+  assert.equal(count(built, "E04RS0533"), 2);
+  assert.equal(count(built, "E04RS0501"), 2);
   assert.equal(count(built, "E04RS0456"), 1);
   assert.equal(count(built, "E04RS0455"), 2);
   assert.equal(count(built, "07100"), 0);
@@ -415,7 +415,7 @@ for (const style of ["sideways", "transom", "slot"]) {
     const transoms = built.components.filter((c) => c.kind === "intermediate");
     assert.equal(
       transoms.length,
-      style === "transom" ? r.levels.liftLevels.length : 0,
+      style === "transom" ? r.levels.liftLevels.length - 1 : 0,
     );
     const ladders = built.components.filter((c) => c.kind === "ladder");
     assert.equal(ladders.length, r.levels.liftLevels.length);
@@ -457,7 +457,9 @@ test("safety gates where a ladder tower meets a working deck", async () => {
     const r = built.runs[0];
     const k = [...r.ladderBays][0];
     const vOut = r.gap + r.widthSpec.width;
-    const gates = built.components.filter((c) => c.kind === "gate");
+    const gates = built.components.filter(
+      (c) => c.kind === "gate" && Math.abs(c.local.a[1] - vOut) < 1e-6,
+    );
     assert.deepEqual(
       gates.map((g) => g.local.a[2]),
       r.levels.deckLevels,
@@ -481,8 +483,33 @@ test("safety gates where a ladder tower meets a working deck", async () => {
     const ground = built.components.find(
       (c) => c.kind === "ladder" && c.local.a[2] === 0,
     );
-    assert.ok(ground.local.a[1] > vOut, "ground ladder in the tower");
+    const vt = vOut + r.widthSpec.width;
+    assert.ok(ground.local.a[1] > vt, "first ladder outside the tower");
+    const first = r.levels.liftLevels[0];
+    const outerGate = built.components.find(
+      (c) =>
+        c.kind === "gate" &&
+        Math.abs(c.local.a[1] - vt) < 1e-6 &&
+        Math.abs(c.local.a[2] - first) < 1e-6,
+    );
+    assert.ok(outerGate, "safety gate where the first ladder lands");
+    const [g0, g1] = [outerGate.local.a[0], outerGate.local.b[0]].sort(
+      (a, b) => a - b,
+    );
+    assert.ok(ground.local.a[0] > g0 && ground.local.a[0] < g1);
+    const droppers = built.components.filter((c) => c.dropper);
+    assert.equal(droppers.length, r.levels.liftLevels.length - 1);
+    assert.equal(count(built, "CPL-SWV"), droppers.length);
   }
+});
+
+test("ties are F-ties: three tubes and three couplers each", () => {
+  const built = buildJob(exampleJob());
+  const ties = built.runs.reduce((a, r) => a + r.tieCount, 0);
+  assert.ok(ties > 0);
+  const tubes = built.components.filter((c) => c.kind === "tube" && c.tie);
+  assert.equal(tubes.length, ties * 3);
+  assert.equal(count(built, "CPL-DBL"), ties * 3);
 });
 
 test("hop-ups go in where the gap to the house is over 300 mm", async () => {

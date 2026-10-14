@@ -1,3 +1,5 @@
+import { FITTINGS } from "./fittings.js";
+
 // Scafom-rux RINGSCAFF, LA 07 dimension (compatible 0.73–3.07 m bays).
 // Part numbers, weights and list prices (€, each) from the Scafom-rux
 // RINGSCAFF price list, status 06/2019. Hire rates are placeholders set to
@@ -179,22 +181,6 @@ const site = [
     weight: 3.0,
     hire: 0.05,
   },
-  {
-    code: "TUBE-1.5",
-    name: "Tie tube 1.5 m",
-    kind: "tietube",
-    length: 1.5,
-    weight: 6.5,
-    hire: 0.2,
-  },
-  {
-    code: "CPL-DBL",
-    name: "Double coupler",
-    kind: "coupler",
-    length: 0,
-    weight: 1.0,
-    hire: 0.1,
-  },
 ];
 
 export const RINGSCAFF = {
@@ -233,5 +219,6 @@ export const RINGSCAFF = {
     ...brackets,
     ...access,
     ...site,
+    ...FITTINGS,
   ],
 };

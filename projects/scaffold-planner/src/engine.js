@@ -461,22 +461,26 @@ function ladderFor(system, rise) {
   return { len: pick, up: (pick ?? (rise + LADDER_ABOVE) * k) / k };
 }
 
-// Ladder leaning in towards the main scaffold (-v), resting at the main
-// scaffold's outer line and passing the landing at `u`.
-function climb(f, ctx, u, z1, rise) {
+// Ladder leaning in towards the main scaffold (-v), resting on the guardrail
+// line at `face` and passing the landing at `u`.
+function climb(f, ctx, u, z1, rise, face = ctx.vout) {
   const { len, up } = ladderFor(ctx.system, rise);
-  const v = ctx.vout + 0.06 + LADDER_SLOPE * Math.min(up - rise, 1.0);
+  const v = face + 0.06 + LADDER_SLOPE * Math.min(up - rise, 1.0);
   const foot = [u, v + LADDER_SLOPE * rise, z1 - rise];
   const top = [u, foot[1] - LADDER_SLOPE * up, foot[2] + up];
   f.bar("ladder", len, foot, top, { w: 0.4 });
 }
 
-// Self-closing safety gate in the main outer guardrail where a ladder tower
-// landing meets a working deck, hinged on the standard and closing onto a
-// guardrail post; the rest of the bay keeps its guardrail. The gate runs
-// from its hinge (a) to its latch (b).
-function mainGate(f, ctx, b, z1, atStart) {
-  const { system, vout } = ctx;
+const tubeFor = (system, span) => {
+  const lens = lengthsOf(system, "tube");
+  return lens.find((l) => l >= span - EPS) ?? lens.at(-1);
+};
+
+// Self-closing safety gate in the guardrail line `v`, hinged on the standard
+// and closing onto a guardrail post; the rest of the bay keeps its
+// guardrail. The gate runs from its hinge (a) to its latch (b).
+function gateIn(f, ctx, b, z1, atStart, v) {
+  const { system } = ctx;
   const rest = lengthsOf(system, "ledger")
     .filter(
       (l) =>
@@ -488,58 +492,98 @@ function mainGate(f, ctx, b, z1, atStart) {
   if (rest) {
     const post = atStart ? g1 : g0;
     const [r0, r1] = atStart ? [g1, b.u1] : [b.u0, g0];
-    f.bar(
-      "gatepost",
-      undefined,
-      [post, vout, z1 - 0.2],
-      [post, vout, z1 + 1.5],
-    );
+    f.bar("gatepost", undefined, [post, v, z1 - 0.2], [post, v, z1 + 1.5]);
     for (const dz of [0.5, 1.0]) {
-      f.bar("ledger", rest, [r0, vout, z1 + dz], [r1, vout, z1 + dz], {
+      f.bar("ledger", rest, [r0, v, z1 + dz], [r1, v, z1 + dz], {
         rail: true,
       });
     }
-    f.bar("toeboard", rest, [r0, vout, z1], [r1, vout, z1], { face: "out" });
+    f.bar("toeboard", rest, [r0, v, z1], [r1, v, z1], { face: "out" });
   }
   const [hinge, latch] = atStart ? [g0, g1] : [g1, g0];
-  f.bar("gate", undefined, [hinge, vout, z1], [latch, vout, z1], { h: 1.0 });
+  f.bar("gate", undefined, [hinge, v, z1], [latch, v, z1], { h: 1.0 });
+  return (g0 + g1) / 2;
 }
 
+// Tube dropper across a ladder opening at guardrail height, hung on a swivel
+// coupler so the climber lifts it to step off and it drops back behind them.
+function dropper(f, ctx, from, to) {
+  f.bar(
+    "tube",
+    tubeFor(ctx.system, Math.hypot(to[0] - from[0], to[1] - from[1])),
+    from,
+    to,
+    {
+      dropper: true,
+    },
+  );
+  f.point("swivel", undefined, from);
+}
+
+// Ladder tower: the first ladder climbs the tower's outside face from the
+// ground through a safety gate onto a fully decked first lift; above that
+// each ladder climbs inside the tower through the opening, guarded by a tube
+// dropper. Where the tower meets a working deck the main guardrail has a
+// safety gate.
 function ladderTower(f, ctx, b, decks) {
   const { levels, W, vout, plankW, boards } = ctx;
   const working = new Set(decks);
-  const vt = accessTower(f, ctx, b, working);
+  const first = levels.liftLevels[0];
+  const vt = accessTower(f, ctx, b, working, first);
   const style = ctx.ladderStyle(b.len);
   const opening = ladderOpening(ctx, b.len, style);
   const from = vout + (W - boards * plankW) / 2;
+  const { open } = opening;
+  const rail = (z) => z + 1.0;
   levels.liftLevels.forEach((z1, k) => {
-    const rise = z1 - (k === 0 ? 0 : levels.liftLevels[k - 1]);
-    const atStart = k % 2 === 0;
-    const { open } = opening;
-    if (style === "slot") {
-      for (let j = 2; j < boards; j++) {
-        const v = from + (j + 0.5) * plankW;
-        f.bar("plank", b.len, [b.u0, v, z1], [b.u1, v, z1], {
-          w: plankW - 0.01,
-        });
-      }
-    } else if (style === "sideways") {
-      const u = atStart ? b.u0 + open : b.u0;
-      for (let j = 0; j < opening.n; j++) {
-        const uc = u + (j + 0.5) * plankW;
-        f.bar("plank", W, [uc, vout, z1], [uc, vt, z1], {
-          w: plankW - 0.01,
-          across: true,
-        });
-      }
+    const atStart = k % 2 === 1;
+    if (k === 0) {
+      if (style === "sideways") {
+        const n = Math.floor((b.len + EPS) / plankW);
+        for (let j = 0; j < n; j++) {
+          const uc = b.u0 + (j + 0.5) * plankW;
+          f.bar("plank", W, [uc, vout, z1], [uc, vt, z1], {
+            w: plankW - 0.01,
+            across: true,
+          });
+        }
+      } else planks(f, ctx, b, z1, boards, from);
+      const u = gateIn(f, ctx, b, z1, true, vt);
+      climb(f, ctx, u, z1, z1, vt);
     } else {
-      const ut = atStart ? b.u0 + open : b.u1 - open;
-      f.bar("intermediate", W, [ut, vout, z1], [ut, vt, z1], { profile: "u" });
-      const [u0, u1] = atStart ? [ut, b.u1] : [b.u0, ut];
-      planks(f, ctx, { u0, u1, len: opening.deck }, z1, boards, from);
+      const rise = z1 - levels.liftLevels[k - 1];
+      if (style === "slot") {
+        for (let j = 2; j < boards; j++) {
+          const v = from + (j + 0.5) * plankW;
+          f.bar("plank", b.len, [b.u0, v, z1], [b.u1, v, z1], {
+            w: plankW - 0.01,
+          });
+        }
+        const v = from + 2 * plankW;
+        dropper(f, ctx, [b.u0, v, rail(z1)], [b.u1, v, rail(z1)]);
+      } else {
+        const edge = atStart ? b.u0 + open : b.u1 - open;
+        if (style === "sideways") {
+          const u = atStart ? edge : b.u0;
+          for (let j = 0; j < opening.n; j++) {
+            const uc = u + (j + 0.5) * plankW;
+            f.bar("plank", W, [uc, vout, z1], [uc, vt, z1], {
+              w: plankW - 0.01,
+              across: true,
+            });
+          }
+        } else {
+          f.bar("intermediate", W, [edge, vout, z1], [edge, vt, z1], {
+            profile: "u",
+          });
+          const [u0, u1] = atStart ? [edge, b.u1] : [b.u0, edge];
+          planks(f, ctx, { u0, u1, len: opening.deck }, z1, boards, from);
+        }
+        dropper(f, ctx, [edge, vt, rail(z1)], [edge, vout, rail(z1)]);
+      }
+      climb(f, ctx, atStart ? b.u0 + open / 2 : b.u1 - open / 2, z1, rise);
     }
-    climb(f, ctx, atStart ? b.u0 + open / 2 : b.u1 - open / 2, z1, rise);
-    if (working.has(z1)) mainGate(f, ctx, b, z1, !atStart);
+    if (working.has(z1)) gateIn(f, ctx, b, z1, !atStart, vout);
   });
 }
 
@@ -603,8 +647,9 @@ function bayComponents(f, ctx, b, i) {
 // Access tower bay outside the main bay: standards, ledgers and transoms,
 // guardrails and toe boards on the outer face and both ends at every lift,
 // and on the main-scaffold side wherever the main bay has no working deck.
+// At `outerGate` the outer face is left to a safety gate.
 // Towers in neighbouring bays share their standards.
-function accessTower(f, ctx, b, working) {
+function accessTower(f, ctx, b, working, outerGate) {
   const { system, levels, W, vout } = ctx;
   const vt = vout + W;
   for (const u of [b.u0, b.u1]) {
@@ -624,14 +669,19 @@ function accessTower(f, ctx, b, working) {
   const rail = (kind, len, a, c) => f.bar(kind, len, a, c, { rail: true });
   for (const z1 of levels.liftLevels) {
     const open = working.has(z1);
+    const outer = outerGate === undefined || !near(z1, outerGate);
     for (const dz of [0.5, 1.0]) {
-      rail("ledger", b.len, [b.u0, vt, z1 + dz], [b.u1, vt, z1 + dz]);
+      if (outer)
+        rail("ledger", b.len, [b.u0, vt, z1 + dz], [b.u1, vt, z1 + dz]);
       if (!open)
         rail("ledger", b.len, [b.u0, vout, z1 + dz], [b.u1, vout, z1 + dz]);
       for (const u of [b.u0, b.u1])
         rail(across, W, [u, vout, z1 + dz], [u, vt, z1 + dz]);
     }
-    f.bar("toeboard", b.len, [b.u0, vt, z1], [b.u1, vt, z1], { face: "out" });
+    if (outer)
+      f.bar("toeboard", b.len, [b.u0, vt, z1], [b.u1, vt, z1], {
+        face: "out",
+      });
     if (!open)
       f.bar("toeboard", b.len, [b.u0, vout, z1], [b.u1, vout, z1], {
         face: "in",
@@ -728,19 +778,32 @@ function cornerBay(f, ctx, uE, levels, pieces) {
   }
 }
 
+// F-tie at each tie point: a tube along the inner standards coupled to the
+// standard, with two tubes from it back to the anchors in the wall, each
+// coupled to it. Three tubes and three right-angle couplers per tie.
 function tieComponents(f, ctx, us, skipFirst) {
-  const { job, levels, vin } = ctx;
+  const { job, levels, vin, system } = ctx;
   if (job.tieEveryBays <= 0) return 0;
   const lines = us.filter((_, j) => !(j === 0 && skipFirst));
   const picks = [];
   for (let k = 0; k < lines.length; k += job.tieEveryBays) picks.push(lines[k]);
   if (lines.length && picks.at(-1) !== lines.at(-1)) picks.push(lines.at(-1));
+  const len = tubeFor(system, 1.5);
+  const v = vin - 0.06;
   let count = 0;
   for (const u of picks) {
     for (const z of levels.tieLevels) {
-      f.bar("tietube", undefined, [u, 0, z], [u, vin, z]);
-      f.count("coupler");
-      f.count("coupler");
+      f.bar("tube", len, [u - len / 2, v, z], [u + len / 2, v, z], {
+        tie: true,
+      });
+      f.point("coupler", undefined, [u, v, z]);
+      for (const du of [-0.55, 0.55]) {
+        const arm = [u + du, v, z - 0.06];
+        f.bar("tube", len, [u + du, 0, z - 0.06], [u + du, v + 0.1, z - 0.06], {
+          tie: true,
+        });
+        f.point("coupler", undefined, arm);
+      }
       count++;
     }
   }
@@ -875,8 +938,9 @@ const PART_ORDER = [
   "basejack",
   "basecollar",
   "soleboard",
-  "tietube",
+  "tube",
   "coupler",
+  "swivel",
 ];
 
 export function partsList(items, system) {
@@ -997,7 +1061,11 @@ function buildRuns(job, system, widthSpec, sink, notes) {
         .map((c) => c.local.a[0]),
       exits: sink.comps
         .filter((c) => c.kind === "gate" && c.run === i)
-        .map((c) => ({ hinge: c.local.a[0], latch: c.local.b[0] })),
+        .map((c) => ({
+          hinge: c.local.a[0],
+          latch: c.local.b[0],
+          v: c.local.a[1],
+        })),
       bayHops: lay.bays.map((_, k) => built.ctx.bayHop(k)?.bracket ?? 0),
       bayDecks: lay.bays.map((_, k) => built.ctx.bayDecks(k)),
       bracedBays: built.ctx.bracedBays,

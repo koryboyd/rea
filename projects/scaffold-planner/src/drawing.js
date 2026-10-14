@@ -80,7 +80,7 @@ function ladderGlyph(w, u, vA, vB, ink) {
 
 // Plan symbol of a gate: the leaf drawn open into the deck, swinging away
 // from the edge, with its swing arc back to the closed position.
-function gateSwing(w, { hinge, latch }, vOut, ink) {
+function gateSwing(w, { hinge, latch, v: vOut }, ink) {
   const L = Math.abs(latch - hinge);
   const s = Math.sign(latch - hinge) || 1;
   const arc = [];
@@ -166,7 +166,7 @@ function planRun(r, place, ink, colorOf, out) {
       );
       for (const u of r.groundLadders ?? []) {
         if (u > u0 && u < u1)
-          out.push(ladderGlyph(w, u, vOut + 0.1, vOut + W - 0.1, ink));
+          out.push(ladderGlyph(w, u, vOut + W + 0.1, vOut + W + 0.8, ink));
       }
       const mid = (u0 + u1) / 2;
       const side = (r.groundLadders ?? []).some((u) => u > u0 && u < mid);
@@ -187,7 +187,7 @@ function planRun(r, place, ink, colorOf, out) {
     );
     out.push("</g>");
   });
-  for (const g of r.exits ?? []) out.push(gateSwing(w, g, vOut, ink));
+  for (const g of r.exits ?? []) out.push(gateSwing(w, g, ink));
   if (r.layout.cornerBay) {
     const uE = r.us.at(-1);
     out.push('<g data-bay="corner">');
@@ -223,7 +223,10 @@ function planRun(r, place, ink, colorOf, out) {
       );
     }
   });
-  const reach = vOut + (r.stairBays.size || r.ladderBays.size ? W : 0);
+  const reach =
+    vOut +
+    (r.stairBays.size || r.ladderBays.size ? W : 0) +
+    (r.ladderBays.size ? 0.8 : 0);
   const labelAt = w((r.us[0] + r.us.at(-1)) / 2, reach + 0.55);
   out.push(
     text(
@@ -308,7 +311,11 @@ export function planSvg(built, ink = SCREEN_INK, opts = {}) {
     const place = built.places[i];
     const W = r.widthSpec.width;
     const reach =
-      r.gap + W + (r.stairBays.size || r.ladderBays.size ? W : 0) + 1.1;
+      r.gap +
+      W +
+      (r.stairBays.size || r.ladderBays.size ? W : 0) +
+      (r.ladderBays.size ? 0.8 : 0) +
+      1.1;
     const uA = Math.min(0, r.us[0]);
     const uB = Math.max(
       r.run.length,
