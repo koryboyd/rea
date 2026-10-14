@@ -69,7 +69,7 @@ function planView(state) {
       <select id="elev-run" data-elev aria-label="Side to show">${built.runs.map((x, i) => opt(i, x.run.label, runIdx)).join("")}</select>
     </div>
     <div class="drawing elev">${elevationSvg(built, runIdx)}</div>
-    <p class="note">Outer face. T marks tie levels. Deck heights are from the base plate.</p>
+    <p class="note">Outer face, metres. Bay lengths and overall length below; lift heights and overall height to the top guardrail on the left, from the base plate. T marks tie levels.</p>
   </div>`
   );
 }

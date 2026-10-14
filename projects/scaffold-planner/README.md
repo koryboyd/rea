@@ -74,6 +74,9 @@ footprint on the ground. A key under the view lists the colours in use.
   free end braces its end bay. Every diagonal rises the same way
   (bottom-left to top-right from outside). Change the spacing under More
   settings.
+- **Elevations**: each side's outer face with dimension chains: bay lengths
+  and overall length below, lift heights and overall height to the top
+  guardrail on the left, deck levels on the right, tie levels marked T.
 - **Hand edits**: on the Plan tab pick a part (brace, ladder bay, stair,
   hop-up 1 or 2, board every lift, reset) and tap bays to add or remove it, or
   drag the part onto a bay. Corner bays take braces only. Edited bays show a

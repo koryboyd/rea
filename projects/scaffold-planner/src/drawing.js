@@ -330,6 +330,50 @@ const STYLE = {
   gatepost: ["steel", 0.05],
 };
 
+// Dimension chain through `stations`: tick marks, extension lines back to
+// the scaffold and each span's length on the dimension line.
+function dimChain(stations, at, from, axis, ink) {
+  const pts = [...new Set(stations.map((s) => Math.round(s * 1000) / 1000))]
+    .sort((a, b) => a - b)
+    .map((s) => [s, at(s)]);
+  if (pts.length < 2) return "";
+  const out = [line(pts[0][1], pts.at(-1)[1], ink.text, 0.02)];
+  for (const [, p] of pts) {
+    const ext =
+      axis === "h"
+        ? line([p[0], from + 0.08], [p[0], p[1] + 0.1], ink.muted, 0.012)
+        : line([from, p[1]], [p[0] - 0.1, p[1]], ink.muted, 0.012);
+    out.push(
+      ext,
+      line(
+        [p[0] - 0.07, p[1] + 0.07],
+        [p[0] + 0.07, p[1] - 0.07],
+        ink.text,
+        0.03,
+      ),
+    );
+  }
+  pts.slice(1).forEach(([s, p], i) => {
+    const [s0, q] = pts[i];
+    const span = s - s0;
+    const size = Math.min(0.24, Math.max(0.14, Math.abs(span) / 4));
+    const mid = [(p[0] + q[0]) / 2, (p[1] + q[1]) / 2];
+    out.push(
+      axis === "h"
+        ? text([mid[0], mid[1] - 0.16], dim(span), size, ink.text)
+        : text(
+            [mid[0] - 0.16, mid[1]],
+            dim(span),
+            size,
+            ink.text,
+            "middle",
+            rotated([mid[0] - 0.16, mid[1]], -90),
+          ),
+    );
+  });
+  return out.join("");
+}
+
 export function elevationSvg(built, index, ink = SCREEN_INK) {
   const r = built.runs[index];
   const W = r.widthSpec.width;
@@ -377,14 +421,58 @@ export function elevationSvg(built, index, ink = SCREEN_INK) {
       text(P(u0 - 0.35, z), "T", 0.3, ink.tie, "middle", ' font-weight="700"'),
     );
   }
-  r.bays.forEach((len, i) => {
+  const ends = r.layout.cornerBay ? [r.us.at(-1) + W] : [];
+  const bayLines = [...r.us, ...ends];
+  const guard = r.levels.topDeck + 1.0;
+  const heights = [0, ...r.levels.liftLevels, guard];
+  out.push(
+    dimChain(bayLines, (s) => P(s, -0.55), P(u0, 0)[1], "h", ink),
+    dimChain(
+      [bayLines[0], bayLines.at(-1)],
+      (s) => P(s, -1.1),
+      P(u0, 0)[1],
+      "h",
+      ink,
+    ),
+    dimChain(heights, (z) => P(u0 - 0.8, z), u0 - 0.1, "v", ink),
+    dimChain([0, guard], (z) => P(u0 - 1.4, z), u0 - 0.1, "v", ink),
+  );
+  const working = new Set(r.levels.deckLevels);
+  for (const z of r.levels.liftLevels) {
+    const deck = working.has(z);
     out.push(
-      text(P((r.us[i] + r.us[i + 1]) / 2, -0.45), dim(len), 0.28, ink.text),
+      text(
+        P(u1 + 0.25, z),
+        deck ? `+${fmt(z)} deck` : `+${fmt(z)}`,
+        0.26,
+        deck ? ink.text : ink.muted,
+        "start",
+        deck ? ' font-weight="600"' : "",
+      ),
     );
-  });
-  for (const d of r.levels.deckLevels) {
-    out.push(text(P(u1 + 0.25, d), `+${fmt(d)}`, 0.3, ink.muted, "start"));
   }
-  const b = { minX: u0 - 1.0, minY: -0.5, w: u1 - u0 + 2.4, h: top + 1.5 };
+  out.push(
+    text(
+      P(u1 + 0.25, guard),
+      `+${fmt(guard)} guardrail`,
+      0.26,
+      ink.muted,
+      "start",
+    ),
+    text(
+      [(u0 + u1) / 2, -0.45],
+      `${r.run.label} · outer face · ${r.levels.lifts} lifts`,
+      0.32,
+      ink.text,
+      "middle",
+      ' font-weight="600"',
+    ),
+  );
+  const b = {
+    minX: u0 - 1.9,
+    minY: -0.8,
+    w: u1 - u0 + 4.7,
+    h: top + 2.3,
+  };
   return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="${f(b.minX)} ${f(b.minY)} ${f(b.w)} ${f(b.h)}" role="img" aria-label="Elevation of ${esc(r.run.label)}">${out.join("")}</svg>`;
 }

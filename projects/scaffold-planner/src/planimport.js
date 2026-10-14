@@ -7,6 +7,7 @@ import {
   squareUp,
   titleFromText,
 } from "./outline.js";
+import { dataUrl, errorText } from "./ui.js";
 
 const PDFJS =
   "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js";
@@ -23,7 +24,12 @@ const el = (tag, attrs = {}, html = "") => {
 function loadScript(src) {
   return new Promise((resolve, reject) => {
     document.head.append(
-      el("script", { src, onload: resolve, onerror: reject }),
+      el("script", {
+        src,
+        onload: resolve,
+        onerror: () =>
+          reject(new Error("the PDF reader could not load (no internet?)")),
+      }),
     );
   });
 }
@@ -125,8 +131,12 @@ async function pageSource(lib, entry) {
 
 async function imageSource(file) {
   const img = new Image();
-  img.src = URL.createObjectURL(file);
-  await img.decode();
+  img.src = await dataUrl(file);
+  await img.decode().catch(() => {
+    throw new Error(
+      `this photo type (${file.type || "unknown"}) cannot be opened here; try a JPEG or PNG`,
+    );
+  });
   return {
     image: img,
     pxPerPt: 1,
@@ -486,19 +496,19 @@ function pagePicker(root, doc, onPick) {
   }
 }
 
+const DROP = `<label class="imp-drop" for="imp-file">
+  <b>Choose a plan PDF or photo</b>
+  <span class="note">Architect PDFs work best: corners snap to the wall lines and the scale is read from the title block.</span>
+  <input type="file" id="imp-file" accept="application/pdf,image/*"/>
+</label>`;
+
 export function openPlanImport({ defaults, onDone }) {
   const overlay = el("div", { className: "importer" });
   overlay.setAttribute("role", "dialog");
   overlay.setAttribute("aria-label", "Import a house plan");
   overlay.innerHTML = `
     <div class="imp-head"><h2>Map from a plan</h2><button class="btn small" data-imp="close">Close</button></div>
-    <div class="imp-body" id="imp-body">
-      <label class="imp-drop" for="imp-file">
-        <b>Choose a plan PDF or photo</b>
-        <span class="note">Architect PDFs work best: corners snap to the wall lines and the scale is read from the title block.</span>
-        <input type="file" id="imp-file" accept="application/pdf,image/*"/>
-      </label>
-    </div>`;
+    <div class="imp-body" id="imp-body">${DROP}</div>`;
   document.body.append(overlay);
   const body = overlay.querySelector("#imp-body");
   const close = () => overlay.remove();
@@ -515,7 +525,8 @@ export function openPlanImport({ defaults, onDone }) {
     onDone(outlineToRuns(points, defaults, traced), placed);
   };
   const fail = (msg) => {
-    body.innerHTML = `<p class="note warn">${msg}</p>`;
+    body.innerHTML = DROP;
+    body.prepend(el("p", { className: "note warn", textContent: msg }));
   };
   const handle = async (file) => {
     if (!file) return;
@@ -530,15 +541,15 @@ export function openPlanImport({ defaults, onDone }) {
         body.innerHTML = `<p class="note">Opening page ${entry.n}…</p>`;
         tracer(body, await pageSource(doc.lib, entry), finish);
       });
-    } catch {
+    } catch (e) {
       fail(
-        "That file could not be read. Try a PDF exported from the drawing program, or a clear photo of the plan.",
+        `That file could not be read: ${errorText(e)}. Try a PDF exported from the drawing program, or a clear JPEG or PNG photo of the plan.`,
       );
     }
   };
-  overlay
-    .querySelector("#imp-file")
-    .addEventListener("change", (e) => handle(e.target.files[0]));
+  overlay.addEventListener("change", (e) => {
+    if (e.target.id === "imp-file") handle(e.target.files[0]);
+  });
   overlay.addEventListener("dragover", (e) => e.preventDefault());
   overlay.addEventListener("drop", (e) => {
     e.preventDefault();

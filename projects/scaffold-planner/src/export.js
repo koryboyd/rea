@@ -1,4 +1,5 @@
 import { PRINT_INK, elevationSvg, planSvg } from "./drawing.js";
+import { dataUrl } from "./ui.js";
 
 const JSPDF_URL =
   "https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js";
@@ -64,26 +65,18 @@ async function svgToImage(svg, widthPx) {
   const heightPx = Math.round((widthPx * h) / w);
   doc.setAttribute("width", widthPx);
   doc.setAttribute("height", heightPx);
-  const blob = new Blob([new XMLSerializer().serializeToString(doc)], {
-    type: "image/svg+xml",
+  const img = new Image();
+  img.src = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(new XMLSerializer().serializeToString(doc))}`;
+  await img.decode();
+  const canvas = Object.assign(document.createElement("canvas"), {
+    width: widthPx,
+    height: heightPx,
   });
-  const url = URL.createObjectURL(blob);
-  try {
-    const img = new Image();
-    img.src = url;
-    await img.decode();
-    const canvas = Object.assign(document.createElement("canvas"), {
-      width: widthPx,
-      height: heightPx,
-    });
-    const ctx = canvas.getContext("2d");
-    ctx.fillStyle = "#ffffff";
-    ctx.fillRect(0, 0, widthPx, heightPx);
-    ctx.drawImage(img, 0, 0);
-    return { data: canvas.toDataURL("image/jpeg", 0.85), ratio: h / w };
-  } finally {
-    URL.revokeObjectURL(url);
-  }
+  const ctx = canvas.getContext("2d");
+  ctx.fillStyle = "#ffffff";
+  ctx.fillRect(0, 0, widthPx, heightPx);
+  ctx.drawImage(img, 0, 0);
+  return { data: canvas.toDataURL("image/jpeg", 0.85), ratio: h / w };
 }
 
 function header(pdf, job, title, page) {
@@ -128,14 +121,8 @@ async function underlayData(job) {
   const u = job.fromPlan && job.underlay;
   if (!u?.url) return null;
   try {
-    const blob = await (await fetch(u.url)).blob();
-    const url = await new Promise((resolve, reject) => {
-      const r = new FileReader();
-      r.onload = () => resolve(r.result);
-      r.onerror = reject;
-      r.readAsDataURL(blob);
-    });
-    return { ...u, url };
+    if (u.url.startsWith("data:")) return u;
+    return { ...u, url: await dataUrl(await (await fetch(u.url)).blob()) };
   } catch {
     return null;
   }

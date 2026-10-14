@@ -14,7 +14,14 @@ import {
 import { jobLoads } from "./loads.js";
 import { quoteJob } from "./quote.js";
 import { openStore } from "./store.js";
-import { STATUS_TEXT, esc, money, underlayOf } from "./ui.js";
+import {
+  STATUS_TEXT,
+  dataUrl,
+  errorText,
+  esc,
+  money,
+  underlayOf,
+} from "./ui.js";
 import { TOOLS, VIEWS } from "./views.js";
 
 const $ = (sel) => document.querySelector(sel);
@@ -522,12 +529,12 @@ async function storeUnderlay({ blob, ...place }) {
       const up = await assets.upload(blob, { type: "image/jpeg" });
       return { ...place, id: up.id, url: `/_blob/${up.id}` };
     }
-  } catch {
+  } catch (e) {
     toast(
-      "The plan shows for this visit only. It could not be saved with the job.",
+      `The plan shows for this visit only. It could not be saved with the job (${errorText(e)}).`,
     );
   }
-  return { ...place, url: URL.createObjectURL(blob), local: true };
+  return { ...place, url: await dataUrl(blob), local: true };
 }
 
 function hopDecks(width) {

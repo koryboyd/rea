@@ -43,6 +43,18 @@ export function stepper({ id, attrs, value, step, min = 0, label }) {
   </div>`;
 }
 
+// Artifact pages may refuse blob: URLs, so images go through data: URLs.
+export const dataUrl = (blob) =>
+  new Promise((resolve, reject) => {
+    const r = new FileReader();
+    r.onload = () => resolve(r.result);
+    r.onerror = () => reject(r.error);
+    r.readAsDataURL(blob);
+  });
+
+export const errorText = (e) =>
+  e?.code ?? e?.message ?? (typeof e === "string" ? e : "unknown error");
+
 export const underlayOf = (s) =>
   s.job.fromPlan && s.job.underlay && s.showUnderlay !== false
     ? s.job.underlay
