@@ -47,9 +47,10 @@ footprint on the ground. A key under the view lists the colours in use.
   when the bracket clears the wall; otherwise the checks say so.
 - **Ladder access**: a ladder tower bay outside the scaffold, like a stair
   tower, never in the working deck. The first ladder climbs the tower's
-  outside face beside a self-closing safety gate (E04RS0533, on a guardrail
-  post E04RS0501), resting on the outer guardrail ledger, so you step off
-  sideways through the gate onto a fully decked first lift. Above that
+  outside face just past the corner standard that carries a self-closing
+  safety gate (E04RS0533, on a guardrail post E04RS0501), resting on a 0.33 m
+  ledger (E04RS1097) off that standard, so you step off sideways through the
+  gate onto a fully decked first lift. Above that
   each ladder climbs inside the tower, facing the scaffold and leaning in
   towards it so you step straight off onto the landing, and each opening has
   a tube dropper on a swivel coupler across it at guardrail height. Tower
@@ -76,9 +77,9 @@ footprint on the ground. A key under the view lists the colours in use.
     half the bay on a standard adapter the same way at working decks, leaving
     the landing open where the flight arrives.
 - **Ties**: F-ties at the tie spacing: a tie tube from the inner standard
-  through the opening into the house, with two tubes coupled to it clamping
-  the wall: a horizontal tube against the outside face and a vertical tube
-  against the inside face, so
+  through the opening into the house, with two vertical 900 mm tubes coupled
+  to it clamping the wall, one against the outside face and one against the
+  inside face (the tie tube is 900 mm too unless the gap needs longer), so
   three tubes and three right-angle couplers per tie (wall taken as 250 mm
   thick). Tubes and couplers are placeholder parts until you enter your own.
 - **Stair access**: a tower bay outside the scaffold (2.57 m bay on Ringscaff)

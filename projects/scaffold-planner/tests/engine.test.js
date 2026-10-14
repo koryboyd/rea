@@ -626,9 +626,21 @@ test("ties are F-ties: three tubes and three couplers each", () => {
   const tubes = built.components.filter((c) => c.kind === "tube" && c.tie);
   assert.equal(tubes.length, ties * 3);
   const vertical = tubes.filter(
-    (c) => Math.abs(c.local.b[2] - c.local.a[2]) > 1,
+    (c) => Math.abs(c.local.b[2] - c.local.a[2]) > 0.5,
   );
-  assert.equal(vertical.length, ties, "inside tube runs vertically");
+  assert.equal(vertical.length, ties * 2, "wall tubes run vertically");
+  assert.ok(
+    vertical.every((c) => c.code === "TUBE-0.9"),
+    "900 mm wall tubes",
+  );
+  const tight = built.runs.filter((r) => r.gap <= 0.35).map((r) => r.run.label);
+  const tieTubes = tubes.filter((c) => !vertical.includes(c));
+  assert.ok(
+    tieTubes
+      .filter((c) => tight.includes(built.runs[c.run].run.label))
+      .every((c) => c.code === "TUBE-0.9"),
+    "900 mm tie tube where the gap is 300",
+  );
   const dropperCouplers = built.components.filter((c) => c.dropper).length;
   assert.equal(count(built, "CPL-DBL"), ties * 3 + dropperCouplers);
 });

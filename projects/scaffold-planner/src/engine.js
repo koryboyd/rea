@@ -472,6 +472,15 @@ function climb(f, ctx, u, z1, rise, face = ctx.vout) {
   f.bar("ladder", len, foot, top, { w: 0.4 });
 }
 
+// Short ledger off a standard for a ladder to rest on (Ringscaff 0.33 m), or
+// a tube where the system has no short ledger.
+function stubLedger(system) {
+  const len = lengthsOf(system, "ledger").find((l) => l >= 0.25 && l <= 0.5);
+  return len
+    ? { kind: "ledger", len }
+    : { kind: "tube", len: tubeFor(system, 0.3) };
+}
+
 const tubeFor = (system, span) => {
   const lens = lengthsOf(system, "tube");
   return lens.find((l) => l >= span - EPS) ?? lens.at(-1);
@@ -573,10 +582,11 @@ function ladderExit(f, ctx, b, z1, openAtStart) {
 
 // Ladder tower (exits onto working decks sit at the end where that lift's
 // ladder tops out, so the climber steps straight off onto the deck):
-// the first ladder climbs the tower's outside face beside the gate, resting
-// on the outer guardrail ledger, so the climber steps off sideways through
-// the gate onto a fully decked first lift; above that each ladder climbs inside the tower through the opening, guarded by a tube
-// dropper on standard adapters. Where the tower meets a working deck the
+// the first ladder climbs the tower's outside face just past the corner
+// standard the gate hangs on, resting on a 300 ledger off that standard, so
+// the climber steps off sideways through the gate onto a fully decked first
+// lift; above that each ladder climbs inside the tower through the opening,
+// guarded by a tube dropper on standard adapters. Where the tower meets a working deck the
 // access is half closed with a dropper, or a safety gate.
 function ladderTower(f, ctx, b, decks) {
   const { levels, W, vout, plankW, boards } = ctx;
@@ -604,8 +614,16 @@ function ladderTower(f, ctx, b, decks) {
           });
         }
       } else planks(f, ctx, b, z1, boards, from);
-      const { g0, post } = gateIn(f, ctx, b, z1, false, vt);
-      climb(f, ctx, (post ?? g0) - 0.3, z1, z1, vt);
+      gateIn(f, ctx, b, z1, false, vt);
+      const stub = stubLedger(ctx.system);
+      f.bar(
+        stub.kind,
+        stub.len,
+        [b.u1, vt, z1 + 1.0],
+        [b.u1 + stub.len, vt, z1 + 1.0],
+        { rail: true },
+      );
+      climb(f, ctx, b.u1 + 0.25, z1, z1, vt);
     } else {
       const rise = z1 - levels.liftLevels[k - 1];
       if (style === "slot") {
@@ -876,9 +894,10 @@ function cornerBay(f, ctx, uE, levels, pieces) {
 const WALL_THICKNESS = 0.25;
 
 // F-tie at each tie point: a tie tube from the inner standard through the
-// opening into the house, clamping the wall between two tubes coupled to it:
-// a horizontal tube against the outside face and a vertical tube against the
-// inside face. Three tubes and three right-angle couplers per tie.
+// opening into the house, clamping the wall between two vertical tubes
+// coupled to it, one against the outside face and one against the inside
+// face. Three 900 mm tubes (longer only where the gap needs it) and three
+// right-angle couplers per tie.
 function tieComponents(f, ctx, us, skipFirst) {
   const { job, levels, vin, system } = ctx;
   if (job.tieEveryBays <= 0) return 0;
@@ -887,8 +906,8 @@ function tieComponents(f, ctx, us, skipFirst) {
   for (let k = 0; k < lines.length; k += job.tieEveryBays) picks.push(lines[k]);
   if (lines.length && picks.at(-1) !== lines.at(-1)) picks.push(lines.at(-1));
   const inside = -(WALL_THICKNESS + 0.05);
-  const tieLen = tubeFor(system, vin - inside + 0.15);
-  const armLen = tubeFor(system, 1.5);
+  const tieLen = tubeFor(system, vin + 0.1 - inside + 0.1);
+  const clampLen = tubeFor(system, 0.9);
   let count = 0;
   for (const u of picks) {
     for (const z of levels.tieLevels) {
@@ -897,22 +916,16 @@ function tieComponents(f, ctx, us, skipFirst) {
         tie: true,
       });
       f.point("coupler", undefined, [ut, vin, z]);
-      f.bar(
-        "tube",
-        armLen,
-        [ut - 0.2, 0.03, z + 0.05],
-        [ut - 0.2 + armLen, 0.03, z + 0.05],
-        { tie: true },
-      );
-      f.point("coupler", undefined, [ut, 0.03, z + 0.05]);
-      f.bar(
-        "tube",
-        armLen,
-        [ut - 0.06, inside, z - armLen / 2],
-        [ut - 0.06, inside, z + armLen / 2],
-        { tie: true },
-      );
-      f.point("coupler", undefined, [ut, inside, z]);
+      for (const v of [0.03, inside]) {
+        f.bar(
+          "tube",
+          clampLen,
+          [ut - 0.06, v, z - clampLen / 2],
+          [ut - 0.06, v, z + clampLen / 2],
+          { tie: true },
+        );
+        f.point("coupler", undefined, [ut, v, z]);
+      }
       count++;
     }
   }

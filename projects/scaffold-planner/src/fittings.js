@@ -18,6 +18,7 @@ export const FITTINGS = [
     weight: 2.5,
     hire: 0.3,
   },
+  tube(0.9, 3.9, 0.15),
   tube(1.5, 6.5, 0.2),
   tube(2.0, 8.7, 0.25),
   tube(3.0, 13.0, 0.35),
