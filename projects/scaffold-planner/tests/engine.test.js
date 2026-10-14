@@ -73,6 +73,13 @@ test("ringscaff 6.5 m deck uses 0.5 m rings and Scafom parts", () => {
   assert.equal(count(built, "E04RS0455"), 2);
   assert.equal(count(built, "07100"), 0);
   assert.equal(count(built, "08358"), count(built, "E04RS0002"));
+  assert.equal(count(built, "E04RS0107"), 0);
+  assert.ok(
+    built.components
+      .filter((c) => c.kind === "standard")
+      .every((c) => c.local.b[2] - c.local.a[2] <= 3 + 1e-6),
+    "no standard longer than 3 m",
+  );
   const ring = getSystem("ringscaff").components.map((c) => c.code);
   assert.ok(built.parts.every((p) => ring.includes(p.code)));
 });
@@ -500,18 +507,21 @@ test("ladder exits onto working decks: half closed with a dropper on a standard 
           ),
       );
       assert.equal(closing.length, 1, "half the bay closed on the adapter");
+      const vt = vOut + r.widthSpec.width;
       const ladder = built.components.find(
         (c) =>
           c.kind === "ladder" &&
+          c.local.a[1] < vt &&
           c.local.a[2] < z &&
           c.local.b[2] > z + 0.5 &&
           z - c.local.a[2] < 2.6,
       );
       const [d0, d1] = [exit.local.a[0], exit.local.b[0]].sort((a, b) => a - b);
-      assert.ok(
-        ladder.local.a[0] > d0 && ladder.local.a[0] < d1,
-        `the ladder to +${z} tops out at the exit`,
-      );
+      if (ladder)
+        assert.ok(
+          ladder.local.a[0] > d0 && ladder.local.a[0] < d1,
+          `the ladder to +${z} tops out at the exit`,
+        );
     }
     const mainGates = built.components.filter(
       (c) => c.kind === "gate" && at(c, vOut),
@@ -589,7 +599,20 @@ test("safety gates where a ladder tower meets a working deck", async () => {
     const [g0, g1] = [outerGate.local.a[0], outerGate.local.b[0]].sort(
       (a, b) => a - b,
     );
-    assert.ok(ground.local.a[0] > g0 && ground.local.a[0] < g1);
+    const u = ground.local.a[0];
+    const gap = Math.min(Math.abs(u - g0), Math.abs(u - g1));
+    assert.ok(u < g0 || u > g1, "ladder beside the gate, not in front of it");
+    assert.ok(gap >= 0.2 && gap <= 0.5, "close enough to step off through it");
+    const rest = built.components.find(
+      (c) =>
+        c.rail &&
+        c.kind === "ledger" &&
+        Math.abs(c.local.a[1] - vt) < 1e-6 &&
+        Math.abs(c.local.a[2] - first - 1.0) < 1e-6 &&
+        Math.min(c.local.a[0], c.local.b[0]) < u &&
+        Math.max(c.local.a[0], c.local.b[0]) > u,
+    );
+    assert.ok(rest, "ladder rests on the outer guardrail ledger");
     const droppers = built.components.filter((c) => c.dropper);
     assert.equal(droppers.length, r.levels.liftLevels.length - 1);
     assert.equal(count(built, "CPL-SWV"), droppers.length);

@@ -47,8 +47,9 @@ footprint on the ground. A key under the view lists the colours in use.
   when the bracket clears the wall; otherwise the checks say so.
 - **Ladder access**: a ladder tower bay outside the scaffold, like a stair
   tower, never in the working deck. The first ladder climbs the tower's
-  outside face from the ground through a self-closing safety gate (E04RS0533,
-  on a guardrail post E04RS0501) onto a fully decked first lift. Above that
+  outside face beside a self-closing safety gate (E04RS0533, on a guardrail
+  post E04RS0501), resting on the outer guardrail ledger, so you step off
+  sideways through the gate onto a fully decked first lift. Above that
   each ladder climbs inside the tower, facing the scaffold and leaning in
   towards it so you step straight off onto the landing, and each opening has
   a tube dropper on a swivel coupler across it at guardrail height. Tower
@@ -108,7 +109,7 @@ footprint on the ground. A key under the view lists the colours in use.
 ## Systems
 
 - **Scafom Ringscaff** (default): 0.73 / 1.09 / 1.40 m widths and 0.73–3.07 m
-  bays (LA 07 dimension). Part numbers, weights and list prices come from the
+  bays (LA 07 dimension), standards 0.5–3.0 m. Part numbers, weights and list prices come from the
   Scafom-rux RINGSCAFF price list 06/2019. Toe boards are steel (LA 07
   steel toe boards). U-ledgers carry the decks, tubular
   ledgers fill the other lifts and end guardrails. Ladders (E04RS0454–0456)

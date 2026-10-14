@@ -519,7 +519,7 @@ function gateIn(f, ctx, b, z1, atStart, v) {
   }
   const [hinge, latch] = atStart ? [g0, g1] : [g1, g0];
   f.bar("gate", undefined, [hinge, v, z1], [latch, v, z1], { h: 1.0 });
-  return (g0 + g1) / 2;
+  return { g0, g1, post: rest ? (atStart ? g1 : g0) : null };
 }
 
 // Half-closed access in the guardrail line `v`: a standard adapter on the
@@ -573,9 +573,9 @@ function ladderExit(f, ctx, b, z1, openAtStart) {
 
 // Ladder tower (exits onto working decks sit at the end where that lift's
 // ladder tops out, so the climber steps straight off onto the deck):
-// the first ladder climbs the tower's outside face from the
-// ground through a safety gate onto a fully decked first lift; above that
-// each ladder climbs inside the tower through the opening, guarded by a tube
+// the first ladder climbs the tower's outside face beside the gate, resting
+// on the outer guardrail ledger, so the climber steps off sideways through
+// the gate onto a fully decked first lift; above that each ladder climbs inside the tower through the opening, guarded by a tube
 // dropper on standard adapters. Where the tower meets a working deck the
 // access is half closed with a dropper, or a safety gate.
 function ladderTower(f, ctx, b, decks) {
@@ -604,8 +604,8 @@ function ladderTower(f, ctx, b, decks) {
           });
         }
       } else planks(f, ctx, b, z1, boards, from);
-      const u = gateIn(f, ctx, b, z1, false, vt);
-      climb(f, ctx, u, z1, z1, vt);
+      const { g0, post } = gateIn(f, ctx, b, z1, false, vt);
+      climb(f, ctx, (post ?? g0) - 0.3, z1, z1, vt);
     } else {
       const rise = z1 - levels.liftLevels[k - 1];
       if (style === "slot") {

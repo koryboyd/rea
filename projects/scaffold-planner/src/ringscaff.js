@@ -27,7 +27,6 @@ const standards = [
   [2.0, 10.0, "E04RS0071", 37.9],
   [2.5, 12.4, "E04RS0225", 51.7],
   [3.0, 14.8, "E04RS0096", 56.2],
-  [4.0, 19.3, "E04RS0107", 72.0],
 ].map(row("standard", (l) => `Standard with tube connector ${m(l)}`));
 
 const ledgers = [
