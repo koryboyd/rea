@@ -51,10 +51,14 @@ footprint on the ground. A key under the view lists the colours in use.
   (E04RS0501). Above that, every lift in the ladder bay is decked bar where
   the ladder goes, set in **More settings › Ladder bay decks**:
   - **Sideways decks**: bay-width decks laid across the bay with a 0.8 m+
-    opening at one end (2.57 m bays or longer).
+    opening at one end.
+  - **Intermediate transom**: an intermediate ledger (E04RS0020 / 0039 / 0053) across the bay carries shorter decks laid lengthwise, leaving a
+    0.8 m+ opening at the other end (e.g. 1.57 m decks in a 2.57 m bay).
   - **Miss two decks**: two decks left out along one side (1.57 m bays or
     longer, 3+ decks across).
-    The opening swaps end or side every lift, so each ladder stands on deck
+    End openings need the bay long enough that the ladder foot lands clear of
+    the opening below (2.07 m bays or longer); otherwise the next style that
+    fits is used. The opening swaps end or side every lift, so each ladder stands on deck
     and climbs through the opening above, never through steel. Ladders are
     picked to run about 1 m past the landing (Ringscaff 2 / 3 / 4 m ladders).
     Ladder bay ends get guardrails at lifts where the next bay has no deck.

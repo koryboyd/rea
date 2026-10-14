@@ -400,12 +400,17 @@ function ladderJob(ladderDecks) {
   });
 }
 
-for (const style of ["sideways", "slot"]) {
+for (const style of ["sideways", "transom", "slot"]) {
   test(`${style} ladder bays: ladders stand on deck and never climb through steel`, async () => {
     const built = await ladderJob(style);
     const r = built.runs[0];
     const k = [...r.ladderBays][0];
     assert.equal(r.ladderStyles[k], style);
+    const transoms = built.components.filter((c) => c.kind === "intermediate");
+    assert.equal(
+      transoms.length,
+      style === "transom" ? r.levels.liftLevels.length - 1 : 0,
+    );
     assert.equal(built.missing.length, 0);
     assert.equal(built.components.filter((c) => c.kind === "hatch").length, 0);
     const ladders = built.components.filter((c) => c.kind === "ladder");

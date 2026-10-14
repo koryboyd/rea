@@ -275,7 +275,8 @@ function addComponent(B, c, ledgerColor) {
       wedgeHeads(B, c);
       return;
     }
-    case "transom": {
+    case "transom":
+    case "intermediate": {
       const len = Math.hypot(c.b[0] - c.a[0], c.b[1] - c.a[1]);
       const color = c.rail ? FIXED.rail : ledgerColor(len);
       if (c.profile === "u") B.box(color, c.a, c.b, 0.05, 0.06, -0.03);

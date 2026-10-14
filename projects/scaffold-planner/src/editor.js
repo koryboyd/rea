@@ -225,6 +225,7 @@ function morePanel(job, open) {
           label: "Ladder bay decks",
           options: [
             { value: "sideways", label: "Sideways decks" },
+            { value: "transom", label: "Intermediate transom" },
             { value: "slot", label: "Miss two decks" },
           ],
         }),

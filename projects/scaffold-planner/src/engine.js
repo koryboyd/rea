@@ -414,18 +414,47 @@ const LADDER_ABOVE = 0.9;
 const LADDER_OPENING = 0.8;
 const GATE_OPENING = 0.8;
 
-// Ladder decking without hatches: "sideways" lays bay-width decks across the
-// bay and leaves an opening at one end; "slot" leaves two decks out along one
-// side. Either way the opening swaps end or side every lift, so each ladder
-// stands on deck and rises through the opening above.
+// Ladder decking without hatches, by the job's choice:
+// - "sideways": bay-width decks laid across the bay, opening at one end;
+// - "transom": an intermediate transom across the bay carries shorter decks
+//   laid lengthwise, opening at the other end;
+// - "slot": two decks left out along one side.
+// The opening swaps end or side every lift, so each ladder stands on deck and
+// rises through the opening above. An end opening only works when the ladder
+// foot lands clear of the opening on the lift below.
+const LADDER_STYLES = ["sideways", "transom", "slot"];
+
+function ladderOpening(ctx, len, style) {
+  const { job, system, widthSpec } = ctx;
+  const plankW = system.deckWidth ?? widthSpec.width / widthSpec.boards;
+  const clear = (open) =>
+    open / 2 + LADDER_SLOPE * job.liftHeight + 0.15 <= len - open + EPS;
+  if (style === "slot") {
+    return widthSpec.boards >= 3 && len >= 1.5 - EPS ? { open: len } : null;
+  }
+  if (style === "sideways") {
+    if (!findComponent(system, "plank", widthSpec.width)) return null;
+    const n = Math.floor((len - LADDER_OPENING + EPS) / plankW);
+    const open = round2(len - n * plankW);
+    return n > 0 && clear(open) ? { open, n, plankW } : null;
+  }
+  if (!findComponent(system, "intermediate", widthSpec.width)) return null;
+  const deck = lengthsOf(system, "plank")
+    .filter((l) => l <= len - LADDER_OPENING + EPS)
+    .at(-1);
+  const open = deck ? round2(len - deck) : 0;
+  return deck && clear(open) ? { open, deck } : null;
+}
+
 export function ladderStyleFor(job, system, widthSpec, len) {
-  const sideways =
-    Boolean(findComponent(system, "plank", widthSpec.width)) &&
-    len >= 2.5 - EPS;
-  const slot = widthSpec.boards >= 3 && len >= 1.5 - EPS;
-  if (job.ladderDecks === "slot")
-    return slot ? "slot" : sideways ? "sideways" : null;
-  return sideways ? "sideways" : slot ? "slot" : null;
+  const want = LADDER_STYLES.includes(job.ladderDecks)
+    ? job.ladderDecks
+    : "sideways";
+  const ctx = { job, system, widthSpec };
+  return (
+    [want, ...LADDER_STYLES].find((style) => ladderOpening(ctx, len, style)) ??
+    null
+  );
 }
 
 function ladderFor(system, rise) {
@@ -493,9 +522,15 @@ function ladderLift(f, ctx, b, k, style) {
   const rise = z1 - levels.liftLevels[k - 1];
   const from = vin + (W - boards * plankW) / 2;
   const odd = k % 2 === 1;
+  const opening = ladderOpening(ctx, b.len, style);
+  if (style === "transom") {
+    const ut = odd ? b.u0 + opening.open : b.u1 - opening.open;
+    f.bar("intermediate", W, [ut, vin, z1], [ut, vout, z1], { profile: "u" });
+    const [u0, u1] = odd ? [ut, b.u1] : [b.u0, ut];
+    planks(f, ctx, { u0, u1, len: opening.deck }, z1, boards, from);
+  }
   if (style === "sideways") {
-    const n = Math.floor((b.len - LADDER_OPENING + EPS) / plankW);
-    const open = b.len - n * plankW;
+    const { n, open } = opening;
     const u = odd ? b.u0 + open : b.u0;
     for (let j = 0; j < n; j++) {
       const uc = u + (j + 0.5) * plankW;
@@ -504,6 +539,9 @@ function ladderLift(f, ctx, b, k, style) {
         across: true,
       });
     }
+  }
+  if (style !== "slot") {
+    const { open } = opening;
     const uLand = odd ? b.u0 + open / 2 : b.u1 - open / 2;
     climb(f, ctx, [uLand, vin + W / 2, z1], [odd ? -1 : 1, 0], rise);
     return;
@@ -762,6 +800,7 @@ function runComponents(sink, i, run, lay, place, base) {
     W,
     vin: lay.gap,
     vout: lay.gap + W,
+    widthSpec,
     boards: widthSpec.boards,
     plankW: system.deckWidth ?? W / widthSpec.boards,
     ladderBays: access.ladder,
@@ -857,6 +896,7 @@ const PART_ORDER = [
   "standard",
   "ledger",
   "transom",
+  "intermediate",
   "plank",
   "brace",
   "toeboard",
@@ -894,7 +934,9 @@ function accessBays(run, bays, base, ov = {}) {
   const { job, system, widthSpec } = base;
   const styleOf = (len) => ladderStyleFor(job, system, widthSpec, len);
   const okLadder = (len) => styleOf(len) !== null;
-  const want = job.ladderDecks === "slot" ? "slot" : "sideways";
+  const want = LADDER_STYLES.includes(job.ladderDecks)
+    ? job.ladderDecks
+    : "sideways";
   const ladder = pickBays(
     bays,
     Number(run.ladderBays) || 0,
@@ -934,7 +976,7 @@ function accessBays(run, bays, base, ov = {}) {
 }
 
 export const LADDER_BAY_NOTE =
-  "A ladder bay needs a 1.57 m bay or longer (2.57 m for sideways decks), and slot decking needs 3 or more decks across.";
+  "A ladder bay needs a 2.07 m bay or longer, or 1.57 m with 3 or more decks across.";
 
 function accessNotes(run, access, system) {
   const notes = [];

@@ -44,6 +44,14 @@ const transoms = [
   [1.4, 7.9, "E04RS0380", 43.4],
 ].map(row("transom", (l) => `U-ledger ${l > 1 ? "reinforced " : ""}${m(l)}`));
 
+// Intermediate ledger, LA 07: hooks over the ledgers to carry deck ends
+// mid-bay, used to frame ladder openings.
+const intermediates = [
+  [0.73, 3.6, "E04RS0020", 23.5],
+  [1.09, 5.3, "E04RS0039", 25.5],
+  [1.4, 9.1, "E04RS0053", 30.5],
+].map(row("intermediate", (l) => `Intermediate ledger ${m(l)}`));
+
 const decks = [
   [0.73, 5.9, "E04RS0941", 45.8],
   [1.09, 9.7, "E04RS0887", 46.7],
@@ -214,6 +222,7 @@ export const RINGSCAFF = {
     ...standards,
     ...ledgers,
     ...transoms,
+    ...intermediates,
     ...decks,
     ...braces,
     ...shortBraces,
