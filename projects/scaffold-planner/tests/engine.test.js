@@ -443,6 +443,7 @@ for (const style of ["sideways", "transom", "slot"]) {
     assert.equal(ladders.length, r.levels.liftLevels.length);
     for (const l of ladders) {
       const [foot, top] = [l.local.a, l.local.b];
+      if (foot[2] === 0) continue;
       assert.ok(Math.abs(foot[0] - top[0]) < 1e-6, "ladder faces the scaffold");
       assert.ok(top[1] < foot[1], "ladder leans in towards the scaffold");
 
@@ -599,10 +600,11 @@ test("safety gates where a ladder tower meets a working deck", async () => {
     const [g0, g1] = [outerGate.local.a[0], outerGate.local.b[0]].sort(
       (a, b) => a - b,
     );
-    const u = ground.local.a[0];
+    const [foot, top] = [ground.local.a, ground.local.b];
+    assert.ok(Math.abs(foot[1] - top[1]) < 1e-6, "ladder runs along the face");
     assert.ok(
-      Math.abs(u - g0) < 0.05 || Math.abs(u - g1) < 0.05,
-      "ladder at the gate's corner standard, not in front of the gate",
+      foot[1] - vt > 0.1 && foot[1] - vt < 0.3,
+      "right next to the scaffold",
     );
     const stub = built.components.find(
       (c) =>
@@ -614,13 +616,17 @@ test("safety gates where a ladder tower meets a working deck", async () => {
         Math.abs(c.local.a[2] - first - 1.0) < 1e-6,
     );
     assert.ok(stub, "300 ledger straight out from the corner standard");
-    assert.ok(Math.abs(u - stub.local.a[0]) < 1e-6, "ladder on the ledger");
-    const [foot, top] = [ground.local.a, ground.local.b];
-    const t = (stub.local.a[2] - foot[2]) / (top[2] - foot[2]);
-    const vAtStub = foot[1] + (top[1] - foot[1]) * t;
+    const at = (z) =>
+      foot[0] + ((top[0] - foot[0]) * (z - foot[2])) / (top[2] - foot[2]);
     assert.ok(
-      Math.abs(vAtStub - stub.local.b[1]) < 0.05,
-      "ladder rests on the end of the ledger",
+      Math.abs(at(stub.local.a[2]) - stub.local.a[0]) < 0.05,
+      "ladder sits across the 300 ledger",
+    );
+    assert.ok(top[2] > stub.local.a[2], "ladder runs on past the ledger");
+    const uLand = at(first);
+    assert.ok(
+      uLand > g0 && uLand < g1,
+      "gate beside the ladder at the landing",
     );
     const droppers = built.components.filter((c) => c.dropper);
     assert.equal(droppers.length, r.levels.liftLevels.length - 1);

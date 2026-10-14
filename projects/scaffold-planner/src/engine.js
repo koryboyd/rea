@@ -582,10 +582,10 @@ function ladderExit(f, ctx, b, z1, openAtStart) {
 
 // Ladder tower (exits onto working decks sit at the end where that lift's
 // ladder tops out, so the climber steps straight off onto the deck):
-// the first ladder climbs on the end of a 300 ledger sticking straight out
-// from the corner standard the gate hangs on, centred on that standard and
-// stood off the face by the ledger, so the climber steps off sideways in front
-// of the gate and through it onto a fully decked first lift; above that each ladder climbs inside the tower through the opening,
+// the first ladder runs along the tower's outside face right next to it,
+// leaning across a 300 ledger sticking straight out from the corner standard
+// the gate hangs on, so at the top the gate is beside the climber and they
+// step off sideways through it onto a fully decked first lift; above that each ladder climbs inside the tower through the opening,
 // guarded by a tube dropper on standard adapters. Where the tower meets a working deck the
 // access is half closed with a dropper, or a safety gate.
 function ladderTower(f, ctx, b, decks) {
@@ -623,7 +623,12 @@ function ladderTower(f, ctx, b, decks) {
         [b.u1, vt + stub.len, z1 + 1.0],
         { rail: true },
       );
-      climb(f, ctx, b.u1, z1, z1, vt + stub.len - 0.04);
+      const { len, up } = ladderFor(ctx.system, z1);
+      const v = vt + 0.19;
+      const footU = b.u1 - 0.03 - LADDER_SLOPE * (z1 + 1.0);
+      f.bar("ladder", len, [footU, v, 0], [footU + LADDER_SLOPE * up, v, up], {
+        w: 0.4,
+      });
     } else {
       const rise = z1 - levels.liftLevels[k - 1];
       if (style === "slot") {
